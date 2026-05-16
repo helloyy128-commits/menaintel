@@ -232,7 +232,7 @@ const TodayTab = ({tags,bookmarks,onBookmark,competitor,setCompetitor,setActiveT
     <div style={{maxWidth:720,margin:"0 auto"}}>
       <div style={{marginBottom:28}}>
         <p style={{fontSize:11,letterSpacing:"0.12em",textTransform:"uppercase",color:C.subtle,fontFamily:"'DM Mono',monospace",margin:"0 0 6px"}}>
-          MENA E-Commerce Intelligence · Friday, 16 May 2026
+          MENA E-Commerce Intelligence · Saturday, 16 May 2026
         </p>
         <h1 style={{fontSize:26,fontWeight:700,color:C.dark,margin:"0 0 16px",fontFamily:"'DM Sans',sans-serif"}}>Today's Briefing</h1>
 
@@ -334,7 +334,17 @@ const TRENDS = {
           {theme:"Strategic signal",body:"Talabat Pro accounted for 49% of GMV in March 2026, up from 32% a year earlier. The 'Everyday App' investment of $120M — split across grocery density, Pro subscription, and new retail — is showing clear traction. Multi-vertical customer share rose 4pp YoY to 76%."},
         ],
         sources:[{name:"Gulf News",tier:1,url:"https://gulfnews.com/business/retail/talabat-sees-higher-income-in-2026-as-spike-in-orders-drive-strong-q1-growth-1.500537728",date:"12 May 2026",paywall:false}]},
-      {id:"w2",category:"Competitor Moves",categoryColor:C.red,headline:"Noon confirms dual IPO within 24 months; $500M raised, autonomous delivery in testing",markets:["UAE","KSA"],competitor:"Noon",corroborated:true,
+      {id:"w3",category:"Supply Chain",categoryColor:"#0891b2",headline:"Regional conflict extends delivery windows by up to 10 days for Shein, Temu and Amazon",markets:["UAE","KSA","Egypt"],competitor:"Shein",corroborated:true,
+        sections:[
+          {theme:"What happened",body:"Escalating regional conflict from late February 2026 forced major platforms to revise delivery estimates across the Middle East. Temu extended delivery windows from 7-15 to 6-20 days; Shein from 5-8 to 8-10 days; Amazon to 35-45 days for some products. CMA CGM introduced an emergency conflict surcharge and Hapag-Lloyd a War Risk Surcharge."},
+          {theme:"Strategic implication",body:"Chinese merchants on all three platforms temporarily paused new inventory shipments from China to MENA. Jebel Ali port — the world's 10th-largest container port and the region's primary redistribution hub — was central to the disruption. Local fulfilment infrastructure (Talabat's Cairo hub, Keeta's Saudi warehouses) proved its value during this period."},
+        ],
+        sources:[{name:"Bloomberg",tier:1,url:"https://worldef.com/2026/03/09/amazon-temu-middle-east-shipping-delays/",date:"9 Mar 2026",paywall:true}]},
+      {id:"w4",category:"Funding & M&A",categoryColor:C.blue,headline:"Saudi delivery IPO pipeline builds: Ninja targets $1B Tadawul listing",markets:["KSA"],competitor:"Noon",corroborated:false,
+        sections:[
+          {theme:"The pipeline",body:"Ninja, a Saudi last-mile delivery platform, is lining up Citigroup, Goldman Sachs, Riyad Capital and UBS for a $1B Tadawul IPO in late 2026 or early 2027. Mr Mandoob, serving 14M+ users, is preparing for a Nomu listing after its valuation surpassed $213M. Both represent the first public capital-markets test of Saudi logistics unit economics."},
+        ],
+        sources:[{name:"Enterprise AM",tier:2,url:"https://enterpriseam.com/menaplus/2026/05/13/saudi-firms-are-lining-up-to-ipo-while-uae-and-egyptian-outfits-strike-more-cautious-notes/",date:"13 May 2026",paywall:false}]},
         sections:[
           {theme:"IPO trajectory",body:"Noon founder Mohamed Alabbar confirmed a dual UAE-Saudi listing within two years, valuing the company at ~$10B. The company raised $500M led by PIF. Profitability is the gating condition before listing."},
           {theme:"Cost strategy",body:"Noon is piloting autonomous delivery vans and three-wheeled vehicles, leased rather than purchased. Alabbar targets halving the 40,000-strong delivery workforce by 2027. 'Reducing drivers by 50% by 2027 would be amazing,' he said."},
@@ -352,7 +362,17 @@ const TRENDS = {
           {theme:"What changes for Amazon",body:"Amazon's competitive moat in MENA has rested on delivery speed, seller breadth, and customer trust. Speed is now under attack from multiple directions simultaneously. Trendyol's 200,000 daily GCC orders and Keeta's price-disruption playbook are the two most credible new pressures."},
         ],
         sources:[{name:"The National",tier:1,url:"https://www.thenationalnews.com/future/technology/2024/10/16/trendyol-launches-turkeys-first-llm-and-accelerates-expansion-in-the-gulf/",date:"Oct 2024",paywall:false}]},
-      {id:"m2",category:"Super App",categoryColor:"#7c3aed",headline:"Talabat vs Careem: the MENA everyday app race is intensifying",markets:["UAE","KSA","Egypt"],competitor:"Talabat",corroborated:true,
+      {id:"m3",category:"Regulatory",categoryColor:C.purple,headline:"Alshaya calls for regulation of Shein and Temu — GCC incumbents pushing back",markets:["UAE","KSA"],competitor:"Shein",corroborated:false,
+        sections:[
+          {theme:"The call",body:"Alshaya Group Executive Chairman called for legislation to level the playing field between e-commerce platforms and traditional retail at the UAE-Kuwait Economic Forum in Dubai. He argued Shein and Temu generate profits transferred to China without contributing to local economies through hiring nationals, paying municipal fees, or leasing retail space."},
+          {theme:"Why it matters",body:"This is the most senior voice from traditional MENA retail calling for regulation. It mirrors debates in Europe around the EU Digital Services Act and Turkey's January 2026 customs decree. Watch for GCC government response in H2 2026 — Saudi ZATCA's marketplace VAT guidance is already in circulation."},
+        ],
+        sources:[{name:"Argaam",tier:2,url:"https://www.argaam.com/en/article/articledetail/id/1877018",date:"2 Feb 2026",paywall:false}]},
+      {id:"m4",category:"Market Data",categoryColor:"#0891b2",headline:"UAE quick-commerce hits $187M; 54.8% of orders under 30 minutes",markets:["UAE"],competitor:null,corroborated:false,
+        sections:[
+          {theme:"Market snapshot",body:"UAE quick-commerce reached $187.41M in 2026, with 54.8% of orders delivered in under 30 minutes. Talabat, Noon Minutes, Careem, and Carrefour dominate. The UAE's Cashless 2026 initiative targets 90% digital transactions this year. Banks including FAB and HSBC now bundle Noon One and Careem Plus with credit cards, deepening consumer lock-in. Market projected to reach $1.86B by 2029."},
+        ],
+        sources:[{name:"GlobeNewswire",tier:2,url:"https://www.globenewswire.com/news-release/2026/04/17/3276054/28124/en/United-Arab-Emirates-Quick-Commerce-Databook-Report-2026-Market-to-Reach-1-86-Billion-by-2029-Talabat-Noon-and-Careem-Lead-as-Carrefour-Leverages-Localized-Retail-Hubs-for-Same-Hou.html",date:"17 Apr 2026",paywall:false}]},
         sections:[
           {theme:"Talabat's position",body:"Talabat Pro at 49% of GMV (March 2026) and $120M investment in 2026 confirm the 'Everyday App' strategy is working. Multi-vertical customers now represent 76% of GMV. The Cairo hub (27,000 sqm, 1M items/day) cements Egypt as a second home market."},
           {theme:"Careem's counter",body:"Careem Pay processed $2B+ annualised volume. With e&'s $400M investment and group EBITDA turning positive in FY2025 ($48M), Careem is the only platform with a credible super-app infrastructure across ride-hailing, payments, and delivery simultaneously."},
@@ -371,7 +391,18 @@ const TRENDS = {
           {theme:"What to watch in H2",body:"Trendyol's Egypt push; Keeta's UAE entry (planned); Noon's profitability milestone; Careem IPO timing; whether ZATCA marketplace VAT guidance is finalised. Any two of these materialising in the same quarter would signal structural acceleration."},
         ],
         sources:[{name:"Khaleej Times",tier:1,url:"https://www.khaleejtimes.com/uae/noon-ipo-dual-listing-saudi-plans",date:"30 Apr 2026",paywall:false},{name:"Arab News",tier:1,url:"https://arabnews.com/node/2574628/amp",date:"Oct 2024",paywall:false}]},
-      {id:"q2",category:"IPO Pipeline",categoryColor:C.blue,headline:"MENA platform economy entering public markets: Noon, Careem, Ninja, Mr Mandoob all moving toward listings",markets:["UAE","KSA"],competitor:"Noon",corroborated:true,
+      {id:"q3",category:"Market Data",categoryColor:"#0891b2",headline:"Saudi e-commerce: $21.3B in 2024, growing to $56.6B by 2032 — electronic payments hit 79% of retail",markets:["KSA"],competitor:null,corroborated:true,
+        sections:[
+          {theme:"Market size",body:"Saudi Arabia's e-commerce market was valued at $21.3B in 2024, projected to reach $56.6B by 2032 at 13% CAGR. Electronic payments accounted for 79% of all retail transactions in 2024, significantly exceeding the 70% target set for 2025 under the Financial Sector Development Programme."},
+          {theme:"Payments layer",body:"SAMA launched Google Pay and agreed to accept Alipay+ by 2026, embedding international wallets into the local payments stack. This directly expands the addressable checkout infrastructure for Amazon Pay, Tabby, and Tamara simultaneously. The biometric payments and dark-store logistics convergence is accelerating conversion rates and reducing delivery times."},
+        ],
+        sources:[{name:"Verified Market Research",tier:2,url:"https://www.verifiedmarketresearch.com/product/saudi-arabia-e-commerce-market/",date:"Oct 2025",paywall:false}]},
+      {id:"q4",category:"Emerging Markets",categoryColor:"#059669",headline:"Turkey and South Africa: competitive perimeter expanding into MEATR",markets:["Turkey","South Africa","Egypt"],competitor:"Trendyol",corroborated:true,
+        sections:[
+          {theme:"Turkey: Trendyol's Gulf commitment",body:"Trendyol has exceeded $1B GMV in the Gulf with daily orders of 200,000 across UAE and KSA. CEO targets 50% international revenue before IPO. The company signed a fintech MoU with Abu Dhabi's ADQ — UAE sovereign capital backing a Turkish e-commerce financial services play. A $500M data centre in Ankara due Q3 2026 reinforces the infrastructure commitment."},
+          {theme:"South Africa: Takealot under pressure",body:"Takealot opened its marketplace to Chinese sellers to counter Temu and Shein on price. Last reported revenue R14.95B ($872M), up 15%, but barely profitable. Management targets breakeven by 2026. Jumia meanwhile reported 34% revenue growth in Q4 2025 and is advancing toward EBITDA breakeven — focused on West Africa and Egypt rather than South Africa."},
+        ],
+        sources:[{name:"The National",tier:1,url:"https://www.thenationalnews.com/future/technology/2024/10/16/trendyol-launches-turkeys-first-llm-and-accelerates-expansion-in-the-gulf/",date:"Oct 2024",paywall:false},{name:"TechCabal",tier:2,url:"https://techcabal.com/2026/04/15/techcabal-daily-takealot-and-wait-for-delivery/",date:"15 Apr 2026",paywall:false}]},
         sections:[
           {theme:"The pipeline",body:"Noon: dual UAE-Saudi listing within 24 months at ~$10B valuation. Careem: EBITDA positive FY2025, IPO on ADX or DFM possible by late 2026. Ninja: $1B Tadawul IPO in late 2026/early 2027 with Goldman Sachs, Citi, Riyad Capital, UBS mandated. Mr Mandoob: Nomu listing after $213M+ valuation. This is the first wave of MENA digital platform listings at scale."},
           {theme:"Amazon implication",body:"Public listings by regional competitors create new accountability and capital availability. Noon at $10B valuation is better capitalised to compete on logistics investment. Talabat's existing listing (2024, $10B) has already shown how capital markets can fund a regional platform's infrastructure ambitions. The landscape Amazon competes in by 2027 will include several well-capitalised public companies with regional roots."},
@@ -401,7 +432,15 @@ const TrendsTab = ({competitor,setCompetitor}) => {
 
   const filteredInsights = data.insights.filter(ins=>{
     const mObj = MARKETS_LIST.find(m=>m.id===market);
-    const marketOk = market==="all"||(mObj&&mObj.markets?ins.markets.some(m=>mObj.markets.includes(m)):ins.markets.map(m=>m.toLowerCase().replace(" ","")).includes(market));
+    let marketOk = true;
+    if(market!=="all"){
+      if(mObj&&mObj.markets){
+        marketOk = ins.markets.some(m=>mObj.markets.includes(m));
+      } else {
+        const label = mObj?mObj.label:"";
+        marketOk = ins.markets.includes(label);
+      }
+    }
     const compOk = competitor==="All"||ins.competitor===competitor;
     return marketOk&&compOk;
   });
