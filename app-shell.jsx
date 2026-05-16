@@ -1,0 +1,1202 @@
+import { useState } from "react";
+
+// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+const C = {
+  bg: "#f8fafc", surface: "#ffffff", dark: "#0f172a", darkMid: "#1e3a5f",
+  muted: "#64748b", subtle: "#94a3b8", border: "#e2e8f0", faint: "#f1f5f9",
+  red: "#E8400C", blue: "#0C6EE8", purple: "#8B0CE8", green: "#16a34a",
+  amber: "#ca8a04", orange: "#c2410c",
+};
+
+// ─── SHARED COMPONENTS ────────────────────────────────────────────────────────
+const TierBadge = ({ tier }) => (
+  <span style={{
+    fontSize: 10, fontWeight: 700, letterSpacing: "0.06em",
+    padding: "2px 6px", borderRadius: 4,
+    background: tier === 1 ? "#dcfce7" : "#fef9c3",
+    color: tier === 1 ? C.green : C.amber, textTransform: "uppercase",
+  }}>T{tier}</span>
+);
+
+const SourceChip = ({ source }) => (
+  <a href={source.url} target="_blank" rel="noopener noreferrer"
+    style={{
+      display: "inline-flex", alignItems: "center", gap: 6,
+      padding: "4px 10px", borderRadius: 20,
+      border: `1px solid ${C.border}`, background: C.faint,
+      fontSize: 12, color: "#334155", textDecoration: "none",
+      fontFamily: "'DM Mono', monospace", transition: "all 0.15s", cursor: "pointer",
+    }}
+    onMouseEnter={e => { e.currentTarget.style.background = C.dark; e.currentTarget.style.color = "#f8fafc"; e.currentTarget.style.borderColor = C.dark; }}
+    onMouseLeave={e => { e.currentTarget.style.background = C.faint; e.currentTarget.style.color = "#334155"; e.currentTarget.style.borderColor = C.border; }}
+  >
+    <TierBadge tier={source.tier} />
+    {source.name}
+    <span style={{ opacity: 0.45 }}>{source.date}</span>
+    <span style={{ fontSize: 10, opacity: 0.4 }}>↗</span>
+  </a>
+);
+
+const CategoryTag = ({ category, color }) => (
+  <span style={{
+    fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
+    textTransform: "uppercase", color,
+    borderLeft: `3px solid ${color}`, paddingLeft: 8,
+  }}>{category}</span>
+);
+
+// ─── SAMPLE DATA ─────────────────────────────────────────────────────────────
+const SEED_COMPETITORS = ["All", "Noon", "Talabat", "Shein", "Temu", "Trendyol", "Careem", "Keeta", "Jahiz", "Jarir", "Jumia", "Hepsiburada", "Getir", "Migros", "Checkers", "Takealot"];
+
+const INSIGHTS = [
+  {
+    id: 1, category: "Earnings & Results", categoryColor: C.blue,
+    competitor: "Talabat",
+    headline: "Talabat Q1 2026: GMV up 18% to $2.7B, raises full-year net income guidance to $300–330M",
+    synthesis: "Talabat reported Q1 2026 results on 12 May, beating guidance across key metrics. GMV grew 18% year-on-year to $2.7B (constant currency), with GCC up 12% and non-GCC — primarily Egypt — surging 52%. Revenue rose 22% to $1.05B. Adjusted EBITDA of $130M (4.8% of GMV) was lower year-on-year due to deliberate margin investments under its $120M 2026 investment plan. Net income of $87M. Free cash flow of $104M. The company raised its full-year net income forecast by $20M, citing stronger Ramadan trading and higher eat-at-home demand during regional tensions. Talabat Pro subscribers accounted for 49% of GMV in March 2026, up from 32% a year prior.",
+    sources: [
+      { name: "Gulf News", tier: 1, url: "https://gulfnews.com/business/retail/talabat-sees-higher-income-in-2026-as-spike-in-orders-drive-strong-q1-growth-1.500537728", date: "12 May 2026", paywall: false },
+      { name: "Zawya", tier: 1, url: "https://www.tradingview.com/news/reuters.com,2026-05-12:newsml_ZawbRLr9G:0-zawya-talabat-delivers-strong-q1-2026-performance-advances-strategic-investments-and-increases-guidance/", date: "12 May 2026", paywall: false },
+      { name: "Kuwait Times", tier: 2, url: "https://kuwaittimes.com/article/43542/business/talabat-delivers-strong-q1-2026-performance/", date: "12 May 2026", paywall: false },
+    ],
+    corroborated: true, relevanceScore: 98, matchedTags: ["BNPL penetration", "Egypt market entry"],
+  },
+  {
+    id: 2, category: "Competitor Moves", categoryColor: C.red,
+    competitor: "Talabat",
+    headline: "Talabat opens MENA's largest AI-powered fulfilment hub in Cairo — 27,000 sqm, 1M items/day",
+    synthesis: "Talabat Egypt inaugurated MENA's largest quick-commerce fulfilment centre on 28 April 2026 at the Yanmu East Logistics Complex on the Cairo-Suez Road. Spanning 27,000 sqm with capacity for 1 million items daily, the hub supports 100% of Talabat Mart's operations across 12 Egyptian cities, with expansion to 17 cities planned. It deploys proprietary AI for demand forecasting, inventory optimisation, and supply automation. Egyptian ministers of Communications, Finance, Investment, and Industry attended — signalling strong government alignment with Talabat's Egypt strategy.",
+    sources: [
+      { name: "Daily News Egypt", tier: 1, url: "https://www.dailynewsegypt.com/2026/04/28/egypt-launches-menas-largest-ai-powered-quick-commerce-fulfilment-hub-for-talabat/", date: "28 Apr 2026", paywall: false },
+      { name: "Retail ME", tier: 2, url: "https://www.retailmanagementmiddleeast.com/news/talabat-egypt-opens-menas-largest-e-commerce-hub", date: "28 Apr 2026", paywall: false },
+    ],
+    corroborated: true, relevanceScore: 96, matchedTags: ["Egypt market entry", "Last-mile logistics"],
+  },
+  {
+    id: 3, category: "Competitor Moves", categoryColor: C.red,
+    competitor: "Noon",
+    headline: "Noon confirms dual UAE-Saudi IPO within 24 months at ~$10B valuation; autonomous delivery pilots underway",
+    synthesis: "Noon founder Mohamed Alabbar confirmed to the FT that the company is 'almost profitable' and targeting a dual listing on UAE and Saudi exchanges within two years. Valued at close to $10B after raising $2.7B since its 2016 PIF-backed launch, with estimated 2024 GMV of $5–6B (Redseer). Alabbar outlined plans to halve its 40,000-strong delivery workforce by 2027 through autonomous delivery vehicles — leased rather than purchased. 'I don't want the Amazons of the world to come and control my country,' he said, signalling the competitive framing that underpins Noon's growth narrative.",
+    sources: [
+      { name: "Khaleej Times", tier: 1, url: "https://www.khaleejtimes.com/uae/noon-ipo-dual-listing-saudi-plans", date: "30 Apr 2026", paywall: false },
+      { name: "The National", tier: 1, url: "https://www.thenationalnews.com/business/markets/2026/01/02/middle-east-ipos-to-bounce-back-in-2026-after-slump/", date: "2 Jan 2026", paywall: false },
+    ],
+    corroborated: true, relevanceScore: 94, matchedTags: ["Saudi last-mile logistics"],
+  },
+  {
+    id: 4, category: "Competitor Moves", categoryColor: C.red,
+    competitor: "Trendyol",
+    headline: "Trendyol surpasses $1B GMV in Gulf, opens Saudi warehouse, targets 50% international revenue before IPO",
+    synthesis: "Trendyol has exceeded $1B GMV in the Gulf region, with 3 million active shoppers and over 8 million app downloads in GCC markets. The Alibaba-backed platform has expanded from one UAE warehouse to a second facility in Saudi Arabia, employing 500+ staff across both. Daily GCC orders have reached 200,000. CEO Caglayan Cetin confirmed the company targets 50% international revenue before its planned IPO before 2030, and has launched an in-house LLM to support cross-border sellers and local language customer experience. Trendyol also announced a $500M, 48MW data centre in Ankara in partnership with UAE-based Castle Investments, due to launch Q3 2026.",
+    sources: [
+      { name: "The National", tier: 1, url: "https://www.thenationalnews.com/future/technology/2024/10/16/trendyol-launches-turkeys-first-llm-and-accelerates-expansion-in-the-gulf/", date: "16 Oct 2024", paywall: false },
+      { name: "DCD", tier: 2, url: "https://www.datacenterdynamics.com/en/news/turkeys-trendyol-to-build-48mw-data-center-in-ankara/", date: "31 Mar 2026", paywall: false },
+    ],
+    corroborated: true, relevanceScore: 91, matchedTags: ["Chinese platform expansion", "Saudi last-mile logistics"],
+  },
+  {
+    id: 5, category: "Competitor Moves", categoryColor: C.red,
+    competitor: "Keeta",
+    headline: "Keeta (Meituan) expands to Riyadh with SR1B investment, now third-largest food delivery platform in KSA",
+    synthesis: "Keeta, Meituan's international subsidiary, launched in Riyadh with a SR1 billion ($266.6M) investment commitment supporting Vision 2030. Within four months of entering Saudi Arabia, Keeta became the third-largest food delivery platform in the country, onboarding 7,000+ restaurants and 10,000+ riders. The platform uses aggressive pricing — unlimited free delivery on orders above SR25 and up to 70% combo discounts. Keeta's three-year plan includes expansion to UAE, Qatar, Kuwait, Oman, and Bahrain. In Saudi Arabia it is competing directly with Talabat (50%+ market share) and Careem.",
+    sources: [
+      { name: "Arab News", tier: 1, url: "https://arabnews.com/node/2574628/amp", date: "Oct 2024", paywall: false },
+      { name: "Rest of World", tier: 1, url: "https://restofworld.org/2025/delivery-app-keeta-hungerstation-saudi-arabia/", date: "Mar 2025", paywall: false },
+    ],
+    corroborated: true, relevanceScore: 89, matchedTags: ["Saudi last-mile logistics"],
+  },
+  {
+    id: 6, category: "Regulatory", categoryColor: C.purple,
+    competitor: "Shein",
+    headline: "Alshaya Group calls for regulation of Shein and Temu at UAE-Kuwait Economic Forum",
+    synthesis: "Mohammed Abdulaziz Alshaya, Executive Chairman of Alshaya Group, used the UAE-Kuwait Economic Forum in Dubai to call for legislation creating a level playing field between e-commerce platforms and traditional retail. He argued Shein and Temu generate profits transferred directly to China without contributing to local economies through hiring nationals, paying municipal fees, or leasing retail space — creating an uneven competitive environment. The call signals growing pressure from traditional MENA retail incumbents for regulatory intervention, mirroring debates in Europe around the EU Digital Services Act.",
+    sources: [
+      { name: "Argaam", tier: 2, url: "https://www.argaam.com/en/article/articledetail/id/1877018", date: "2 Feb 2026", paywall: false },
+    ],
+    corroborated: false, relevanceScore: 82, matchedTags: ["Marketplace regulation"],
+  },
+  {
+    id: 7, category: "Supply Chain", categoryColor: "#0891b2",
+    competitor: "Shein",
+    headline: "Amazon, Temu and Shein extend Middle East delivery windows by up to 10 days as conflict disrupts shipping routes",
+    synthesis: "Escalating regional conflict from late February 2026 forced major e-commerce platforms to revise delivery estimates across the Middle East. Temu extended delivery windows from 7–15 to 6–20 days; Shein from 5–8 to 8–10 days; Amazon to 35–45 days for some products. CMA CGM introduced an 'emergency conflict surcharge' and Hapag-Lloyd a 'War Risk Surcharge'. Chinese merchants on Amazon, Shein, and Temu temporarily paused new inventory shipments from China to MENA. Jebel Ali port — the world's 10th-largest container port and the region's primary redistribution hub — was central to the disruption.",
+    sources: [
+      { name: "Bloomberg", tier: 1, url: "https://worldef.com/2026/03/09/amazon-temu-middle-east-shipping-delays/", date: "9 Mar 2026", paywall: true },
+      { name: "The Citizen", tier: 2, url: "https://www.citizen.co.za/business/delays-shipments-temu-shein-amazon-middle-east/", date: "3 Mar 2026", paywall: false },
+    ],
+    corroborated: true, relevanceScore: 93, matchedTags: ["Saudi last-mile logistics", "Chinese platform expansion"],
+  },
+  {
+    id: 8, category: "Competitor Moves", categoryColor: C.red,
+    competitor: "Shein",
+    headline: "Shein launches semi-managed seller model in Middle East, partners with Chalhoub Group and Apparel Group",
+    synthesis: "Shein launched a semi-managed business model for its Middle East platform on 30 April, after announcing it on 21 April. The model offers two routes for brand partners: a retail model (Shein purchases inventory directly) and a marketplace model (brands run DTC stores on Shein's platform with logistics support). Key partners include Chalhoub Group, Apparel Group, and Maybelline — indicating Shein is moving beyond cross-border fast fashion toward a full regional marketplace with premium and luxury brand adjacency. Shein's Dubai office has run localised operations since 2016; the Middle East is described as among its highest-margin regions.",
+    sources: [
+      { name: "PR Newswire", tier: 2, url: "https://www.prnewswire.com/ae/news-releases/shein-middle-east-shines-spotlight-on-diverse-partnership-models-for-brand-growth-and-acceleration-302676317.html", date: "2 Feb 2026", paywall: false },
+      { name: "EqualOcean", tier: 2, url: "https://equalocean.com/news/2025042221511", date: "21 Apr 2025", paywall: false },
+    ],
+    corroborated: true, relevanceScore: 85, matchedTags: ["Chinese platform expansion"],
+  },
+  {
+    id: 9, category: "Market Data", categoryColor: "#0891b2",
+    competitor: null,
+    headline: "UAE quick-commerce market hits $187M in 2026 — 54.8% of orders delivered in under 30 minutes",
+    synthesis: "The UAE quick-commerce market reached an estimated $187.41M in 2026, with more than half of all orders now delivered in under 30 minutes. Talabat, Noon Minutes, Careem, and Carrefour (via Majid Al Futtaim) are the dominant players. The sector is shifting from food delivery to multi-category — groceries, pharmacy, pet supplies — with dark stores and micro-fulfilment networks underpinning sub-15-minute promises. UAE's Cashless 2026 initiative targets 90% digital transactions this year. Banks including FAB and HSBC now bundle Noon One and Careem Plus subscriptions with credit cards, deepening consumer lock-in. Market projected to reach $1.86B by 2029.",
+    sources: [
+      { name: "GlobeNewswire", tier: 2, url: "https://www.globenewswire.com/news-release/2026/04/17/3276054/28124/en/United-Arab-Emirates-Quick-Commerce-Databook-Report-2026-Market-to-Reach-1-86-Billion-by-2029-Talabat-Noon-and-Careem-Lead-as-Carrefour-Leverages-Localized-Retail-Hubs-for-Same-Hou.html", date: "17 Apr 2026", paywall: false },
+    ],
+    corroborated: false, relevanceScore: 74, matchedTags: ["Saudi last-mile logistics"],
+  },
+  {
+    id: 10, category: "Competitor Moves", categoryColor: C.red,
+    competitor: "Careem",
+    headline: "Careem Pay processes $2B+ annualised transaction volume; IPO on ADX or DFM by late 2026 possible",
+    synthesis: "Careem Pay processed over $2B in annualised transaction volume by early 2026, with monthly active payer share at approximately 18%. Careem Plus subscription, at 5 million monthly active members, generates an estimated $150M ARR. The company reported group-adjusted EBITDA turning positive in FY2025 at $48M — the profitability milestone that could unlock an IPO on ADX or DFM by late 2026. The $400M strategic investment from e& (Emirates Telecommunications Group) provides the runway for platform decoupling from Uber's stack and regional expansion. Gross transaction value in 2025 was $3.2B.",
+    sources: [
+      { name: "Business Model Canvas", tier: 2, url: "https://businessmodelcanvastemplate.com/products/careem-swot-analysis", date: "2026", paywall: false },
+    ],
+    corroborated: false, relevanceScore: 72, matchedTags: ["BNPL penetration"],
+  },
+  {
+    id: 11, category: "Market Data", categoryColor: "#0891b2",
+    competitor: null,
+    headline: "GCC quick-commerce market on track for $4.9B by 2029 — Talabat, Careem, and Breadfast lead regional expansion",
+    synthesis: "Africa and Middle East quick commerce is forecast to grow 8.9% annually through 2029, reaching $4.9B from $3.2B in 2024 (ResearchAndMarkets, April 2026). In GCC, Talabat, Careem, and large grocers (Carrefour via Majid Al Futtaim, LuLu, Noon grocery formats) dominate — often integrated into super-apps or retailer ecosystems. In Egypt, Talabat and Glovo connect consumers to supermarkets. The sector is expected to consolidate around a small number of scaled ecosystems, with dark-store density and loyalty subscriptions as the primary competitive differentiators.",
+    sources: [
+      { name: "GlobeNewswire", tier: 2, url: "https://www.globenewswire.com/news-release/2026/04/21/3277639/0/en/Africa-and-Middle-East-Quick-Commerce-Report-2026-Market-to-Reach-4-9-Billion-by-2029-Talabat-Careem-and-Breadfast-Lead-Growth-as-Super-Apps-and-Vertical-Integration-Drive-Regional.html", date: "21 Apr 2026", paywall: false },
+    ],
+    corroborated: false, relevanceScore: 68, matchedTags: ["Egypt market entry"],
+  },
+  {
+    id: 12, category: "Competitor Moves", categoryColor: C.red,
+    competitor: "Takealot",
+    headline: "Takealot opens marketplace to Chinese sellers to counter Temu and Shein on price — quality concerns emerge",
+    synthesis: "South Africa's dominant e-commerce platform Takealot has expanded its pool of international sellers, including Chinese merchants, as it attempts to compete with Temu and Shein on price. The shift widens catalogue breadth and keeps price-sensitive consumers on-platform, but creates tension with local sellers who face direct price competition. Customer complaints about long delivery times and quality inconsistencies have increased. Takealot's last reported full-year revenue (March 2025) was R14.95B ($872M), up 15%, but the company 'barely returns a profit' due to operational strain. Management targets breakeven at group level as early as 2026.",
+    sources: [
+      { name: "TechCabal", tier: 2, url: "https://techcabal.com/2026/04/15/techcabal-daily-takealot-and-wait-for-delivery/", date: "15 Apr 2026", paywall: false },
+    ],
+    corroborated: false, relevanceScore: 65, matchedTags: ["Chinese platform expansion"],
+  },
+  {
+    id: 13, category: "Funding & M&A", categoryColor: C.blue,
+    competitor: "Jumia",
+    headline: "Jumia reports 34% revenue surge in Q4 2025, advances toward EBITDA breakeven by late 2026",
+    synthesis: "Jumia, the pan-African e-commerce platform, reported a 34% revenue surge in Q4 2025 and is advancing toward adjusted EBITDA breakeven by late 2026. The company generated $641.9M in GMV in 2024 and operates in 8 countries across West and East Africa. CEO Francis Dufay said Jumia 'hit scaling consistency despite Middle East shocks' (8 May 2026). Jumia exited South Africa and Tunisia in October 2024 to concentrate resources on faster-growing West and East African markets. It is targeting Egypt and North Africa as growth vectors, where it competes with Noon and Talabat.",
+    sources: [
+      { name: "Jumia Group", tier: 2, url: "https://group.jumia.com/", date: "8 May 2026", paywall: false },
+      { name: "Lengow", tier: 2, url: "https://www.lengow.com/get-to-know-more/top-african-marketplaces/", date: "Mar 2026", paywall: false },
+    ],
+    corroborated: true, relevanceScore: 71, matchedTags: ["Egypt market entry"],
+  },
+  {
+    id: 14, category: "Competitor Moves", categoryColor: C.red,
+    competitor: "Trendyol",
+    headline: "Trendyol-Baykar-Ant International-ADQ fintech MoU: payments, loans, and insurance for MENA sellers",
+    synthesis: "Trendyol, Baykar, Ant International, and Abu Dhabi's ADQ signed an MoU in June 2025 to develop a joint fintech platform in Turkey offering payments, deposits, loans, insurance, and investment products. The platform targets Trendyol's tens of thousands of merchants as an initial user base. ADQ's involvement signals UAE sovereign capital backing a Turkish e-commerce fintech play — directly relevant to MEATR given Trendyol's expanding Gulf operations. Pending Turkish regulatory approval. The move mirrors the Tabby/Tamara B2B payments pivot underway in GCC.",
+    sources: [
+      { name: "FinTech Weekly", tier: 2, url: "https://www.fintechweekly.com/magazine/articles/trendyol-baykar-ant-adq-fintech-venture-turkey", date: "Jul 2025", paywall: false },
+    ],
+    corroborated: false, relevanceScore: 69, matchedTags: ["BNPL penetration"],
+  },
+  {
+    id: 15, category: "Market Data", categoryColor: "#0891b2",
+    competitor: null,
+    headline: "Saudi e-commerce market: $21.3B in 2024, 13% CAGR to $56.6B by 2032 — electronic payments hit 79% of retail",
+    synthesis: "Saudi Arabia's e-commerce market was valued at $21.3B in 2024 and is projected to reach $56.6B by 2032 at a 13% CAGR. Electronic payments accounted for 79% of all retail transactions in 2024 — significantly exceeding the 70% target set for 2025 under the Financial Sector Development Programme. SAMA launched Google Pay and agreed to accept Alipay+ by 2026, embedding international wallets into the local payments stack. Key players remain Amazon.sa, Noon, Zid, and Salla. Rural fulfilment costs continue to challenge nationwide expansion.",
+    sources: [
+      { name: "Verified Market Research", tier: 2, url: "https://www.verifiedmarketresearch.com/product/saudi-arabia-e-commerce-market/", date: "Oct 2025", paywall: false },
+      { name: "GlobeNewswire", tier: 2, url: "https://www.globenewswire.com/news-release/2026/01/22/3223626/0/en/Saudi-Arabia-Ecommerce-Market-Trends-and-Expansion-Potential-2026-2031-Vision-2030-Boosts-Saudi-Ecommerce-with-99-Internet-Penetration-78-5G-Coverage.html", date: "22 Jan 2026", paywall: false },
+    ],
+    corroborated: true, relevanceScore: 77, matchedTags: ["Saudi last-mile logistics", "BNPL penetration"],
+  },
+  {
+    id: 16, category: "Competitor Moves", categoryColor: C.red,
+    competitor: "Noon",
+    headline: "Noon raises $500M led by PIF, earmarks funds for autonomous delivery and logistics AI ahead of IPO",
+    synthesis: "Noon completed a $500M funding round led by its core supporter Saudi Arabia's Public Investment Fund and founder Mohamed Alabbar. The capital is earmarked for autonomous delivery vehicle pilots, AI-driven logistics upgrades, and the dual UAE-Saudi listing plan. Noon currently has over 20 million monthly active users across KSA, UAE, and Egypt, and has established a leading position in UAE grocery delivery. The raise reinforces Noon's pre-IPO positioning as a technology-led logistics company rather than purely a marketplace.",
+    sources: [
+      { name: "Seetao", tier: 2, url: "https://www.seetaoe.com/details/255150.html", date: "Dec 2025", paywall: false },
+    ],
+    corroborated: false, relevanceScore: 76, matchedTags: ["Saudi last-mile logistics"],
+  },
+  {
+    id: 17, category: "Market Data", categoryColor: "#0891b2",
+    competitor: null,
+    headline: "Turkey e-commerce hits $115B in 2025 — Trendyol ranks #3 globally in Fast Fashion, ahead of Zara and H&M",
+    synthesis: "Turkey's total e-commerce volume reached 4.57 trillion TL ($115.43B) in 2025, up 52.2% year-on-year, representing 19.3% of total trade and 6.9% of GDP. Q1 2026 Cloudflare Radar data shows Trendyol's Fashion & Trends app now ranks #3 globally in Fast Fashion — ahead of Zara, ASOS, and Uniqlo. Trendyol leads Turkish online retail with $4.9B in net sales, more than 4x second-place Hepsiburada. Mobile accounts for 56% of Turkish HTTP traffic. Turkey is the 4th fastest-growing e-commerce market globally through 2030 at 7.47% CAGR.",
+    sources: [
+      { name: "TechnologyChecker", tier: 2, url: "https://technologychecker.io/blog/ecommerce-turkey-statistics", date: "May 2026", paywall: false },
+    ],
+    corroborated: false, relevanceScore: 66, matchedTags: ["Chinese platform expansion"],
+  },
+  {
+    id: 18, category: "Competitor Moves", categoryColor: C.red,
+    competitor: "Talabat",
+    headline: "Talabat Pro subscribers hit 49% of GMV — 'Everyday App' strategy reshaping MENA super-app competition",
+    synthesis: "Talabat Pro, the company's subscription loyalty programme, accounted for 49% of GMV in March 2026, up from 32% a year earlier — a 1.6x increase. Talabat is investing $120M in 2026 across three areas: expanding Talabat Mart grocery store density, strengthening Pro as a multi-vertical engagement engine (adding ride-hailing and content streaming partner benefits), and building new retail offerings. The multi-vertical strategy is showing traction — the share of customers using multiple verticals increased 4 percentage points year-on-year to 76%. The 'Everyday App' positioning places Talabat in direct competition with Careem's super-app ambitions.",
+    sources: [
+      { name: "Investing.com", tier: 2, url: "https://www.investing.com/news/company-news/talabat-q1-2026-slides-raises-guidance-amid-18-gmv-growth-93CH-4681127", date: "12 May 2026", paywall: false },
+    ],
+    corroborated: false, relevanceScore: 88, matchedTags: ["BNPL penetration", "Egypt market entry"],
+  },
+  {
+    id: 19, category: "Regulatory", categoryColor: C.purple,
+    competitor: null,
+    headline: "Turkey abolishes simplified B2C customs for foreign parcels in January 2026 — AliExpress and cross-border platforms impacted",
+    synthesis: "Presidential Decree No. 10813, effective January 2026, abolished simplified customs entries for B2C imports in Turkey, extending clearance times for parcels from AliExpress and other foreign sellers. The measure is Turkey's most significant regulatory action against cross-border e-commerce platforms and mirrors EU customs reforms targeting Temu and Shein. It directly benefits domestic players Trendyol and Hepsiburada by raising friction and cost for foreign competitors. Watch for similar regulatory moves in GCC as Alshaya Group's calls for regulation gain traction.",
+    sources: [
+      { name: "Mordor Intelligence", tier: 2, url: "https://www.mordorintelligence.com/industry-reports/turkey-ecommerce-market", date: "Feb 2026", paywall: false },
+    ],
+    corroborated: false, relevanceScore: 73, matchedTags: ["Marketplace regulation"],
+  },
+  {
+    id: 20, category: "Market Data", categoryColor: "#0891b2",
+    competitor: null,
+    headline: "Middle East e-commerce market projected to reach $12.3T by 2034 at 19.89% CAGR — Egypt fastest growing market",
+    synthesis: "IMARC Group projects the Middle East e-commerce market to reach $12,293.9B by 2034 at a 19.89% CAGR, with Egypt emerging as the fastest-growing individual market driven by infrastructure investment and digital adoption. Key catalysts include Vision 2030 infrastructure spend in Saudi Arabia, UAE Digital Economy Strategy, and AfCFTA enabling cross-border trade in Africa. Talabat Egypt's Cairo hub (operational April 2026) and Amazon's Egypt presence are early indicators of capital flow into the market. Egypt's 105M-person consumer base at approximately 8% e-commerce penetration of retail represents the largest untapped opportunity in MEATR.",
+    sources: [
+      { name: "IMARC Group", tier: 2, url: "https://www.openpr.com/news/4502557/middle-east-e-commerce-market-size-to-hit-usd-12-293-9-billion", date: "May 2026", paywall: false },
+    ],
+    corroborated: false, relevanceScore: 70, matchedTags: ["Egypt market entry"],
+  },
+  {
+    id: 21, category: "Funding & M&A", categoryColor: C.blue,
+    competitor: "Noon",
+    headline: "Saudi delivery IPO pipeline builds: Ninja targets $1B Tadawul listing, Mr Mandoob valuation surpasses $213M",
+    synthesis: "Saudi Arabia's delivery and logistics sector is approaching a wave of public listings. Ninja, a Saudi last-mile delivery platform, is lining up Citigroup, Goldman Sachs, Riyad Capital, and UBS for a $1B Tadawul IPO in late 2026 or early 2027 (Enterprise AM, 13 May 2026). Mr Mandoob, a Saudi last-mile delivery firm serving 14M+ users, is preparing for a Nomu listing after its valuation surpassed $213M. Both listings would represent the first public capital-markets test of Saudi logistics unit economics — directly relevant to Amazon's last-mile strategy in KSA.",
+    sources: [
+      { name: "Enterprise AM", tier: 2, url: "https://enterpriseam.com/menaplus/2026/05/13/saudi-firms-are-lining-up-to-ipo-while-uae-and-egyptian-outfits-strike-more-cautious-notes/", date: "13 May 2026", paywall: false },
+    ],
+    corroborated: false, relevanceScore: 78, matchedTags: ["Saudi last-mile logistics"],
+  },
+];
+
+const INITIAL_TAGS = [
+  { id: 1, label: "Saudi last-mile logistics", active: true, priority: 1 },
+  { id: 2, label: "BNPL penetration", active: true, priority: 2 },
+  { id: 3, label: "Chinese platform expansion", active: true, priority: 3 },
+  { id: 4, label: "Egypt market entry", active: true, priority: 4 },
+  { id: 5, label: "Marketplace regulation", active: false, priority: 5 },
+];
+
+const SAVED_ARTICLES = [
+  { id: 1, date: "12 May 2026", headline: "Talabat Q1 2026: GMV up 18%, raises full-year net income guidance", source: "Gulf News", tier: 1, category: "Earnings & Results", url: "https://gulfnews.com/business/retail/talabat-sees-higher-income-in-2026-as-spike-in-orders-drive-strong-q1-growth-1.500537728", tags: ["Talabat"] },
+  { id: 2, date: "30 Apr 2026", headline: "Noon nears profitability, eyes dual UAE-Saudi IPO within 24 months", source: "Khaleej Times", tier: 1, category: "Competitor Moves", url: "https://www.khaleejtimes.com/uae/noon-ipo-dual-listing-saudi-plans", tags: ["Noon"] },
+  { id: 3, date: "28 Apr 2026", headline: "Talabat Egypt opens MENA's largest AI-powered quick-commerce hub", source: "Daily News Egypt", tier: 1, category: "Competitor Moves", url: "https://www.dailynewsegypt.com/2026/04/28/egypt-launches-menas-largest-ai-powered-quick-commerce-fulfilment-hub-for-talabat/", tags: ["Egypt market entry"] },
+  { id: 4, date: "17 Apr 2026", headline: "UAE quick-commerce market hits $187M; 54.8% of orders under 30 mins", source: "GlobeNewswire", tier: 2, category: "Market Data", url: "https://www.globenewswire.com/news-release/2026/04/17/3276054/28124/en/United-Arab-Emirates-Quick-Commerce-Databook-Report-2026-Market-to-Reach-1-86-Billion-by-2029-Talabat-Noon-and-Careem-Lead-as-Carrefour-Leverages-Localized-Retail-Hubs-for-Same-Hou.html", tags: ["Saudi last-mile logistics"] },
+];
+
+// ─── TODAY TAB ────────────────────────────────────────────────────────────────
+const TodayTab = ({ tags, bookmarks, onBookmark, competitor, setCompetitor, competitors, setActiveTab }) => {
+  const [expanded, setExpanded] = useState(null);
+  const [showAll, setShowAll] = useState(false);
+  const activeTags = tags.filter(t => t.active).map(t => t.label);
+
+  const filteredInsights = INSIGHTS.filter(i =>
+    competitor === "All" || i.competitor === competitor
+  );
+
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ marginBottom: 28 }}>
+        <p style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: C.subtle, fontFamily: "'DM Mono', monospace", margin: "0 0 6px" }}>
+          MENA E-Commerce Intelligence · Friday, 16 May 2026
+        </p>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: C.dark, margin: "0 0 16px", fontFamily: "'DM Sans', sans-serif" }}>
+          Today's Briefing
+        </h1>
+
+        {/* Company filter strip */}
+        <div style={{ marginBottom: 16 }}>
+          <span style={{ fontSize: 10, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>Filter by company</span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {competitors.map(c => {
+              const active = competitor === c;
+              return (
+                <button key={c} onClick={() => setCompetitor(c)} style={{
+                  padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                  cursor: "pointer", fontFamily: "'DM Mono', monospace", transition: "all 0.15s",
+                  border: active ? "none" : `1px solid ${C.border}`,
+                  background: active ? C.dark : C.surface,
+                  color: active ? "#f8fafc" : C.muted,
+                }}>{c}</button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* News mode toggle + focus areas */}
+        <div style={{ marginBottom: 20 }}>
+          {/* Toggle */}
+          <div style={{
+            display: "inline-flex", borderRadius: 10, overflow: "hidden",
+            border: `1px solid ${C.border}`, marginBottom: showAll ? 0 : 12,
+          }}>
+            <button onClick={() => setShowAll(true)} style={{
+              padding: "7px 18px", border: "none", fontSize: 13, fontWeight: 600,
+              cursor: "pointer", fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s",
+              background: showAll ? C.dark : C.surface,
+              color: showAll ? "#f8fafc" : C.muted,
+            }}>All news</button>
+            <button onClick={() => setShowAll(false)} style={{
+              padding: "7px 18px", border: "none", fontSize: 13, fontWeight: 600,
+              cursor: "pointer", fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s",
+              background: !showAll ? "#1d4ed8" : C.surface,
+              color: !showAll ? "#f8fafc" : C.muted,
+              borderLeft: `1px solid ${C.border}`,
+            }}>Priority news</button>
+          </div>
+
+          {/* Focus area tags — only visible in Priority mode */}
+          {!showAll && activeTags.length > 0 && (
+            <div style={{
+              padding: "12px 14px", borderRadius: 10,
+              background: "#eff6ff", border: "1px solid #bfdbfe",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                <span style={{ fontSize: 10, color: "#1d4ed8", fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.08em" }}>Your focus areas:</span>
+                {activeTags.map(t => (
+                  <span key={t} style={{
+                    fontSize: 11, padding: "3px 10px", borderRadius: 20,
+                    background: "#fff", color: "#1d4ed8", border: "1px solid #bfdbfe",
+                    fontFamily: "'DM Mono', monospace",
+                  }}>{t}</span>
+                ))}
+              </div>
+              <p style={{ fontSize: 11, color: "#3b82f6", fontFamily: "'Georgia', serif", fontStyle: "italic", margin: 0, lineHeight: 1.6 }}>
+                Stories ranked by your focus areas (in priority order), boosted by topics you've saved before. Everything corroborated still appears — focus areas determine the order, not what gets hidden.{" "}
+                <span style={{ color: "#1d4ed8", cursor: "pointer", textDecoration: "underline", fontStyle: "normal", fontFamily: "'DM Mono', monospace", fontSize: 10 }} onClick={() => setActiveTab("settings")}>Edit focus areas →</span>
+              </p>
+            </div>
+          )}
+
+          {showAll && (
+            <p style={{ fontSize: 11, color: C.subtle, fontFamily: "'Georgia', serif", fontStyle: "italic", margin: "8px 0 0", lineHeight: 1.6 }}>
+              Showing all corroborated stories in chronological order — focus areas bypassed.
+            </p>
+          )}
+        </div>
+
+        {/* Executive summary */}
+        <div style={{
+          background: `linear-gradient(135deg, ${C.dark} 0%, ${C.darkMid} 100%)`,
+          borderRadius: 14, padding: "24px 28px", marginBottom: 24,
+        }}>
+          <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "#475569", fontFamily: "'DM Mono', monospace", margin: "0 0 14px" }}>
+            Executive Summary · 16 May 2026
+          </p>
+          <p style={{ fontSize: 15, lineHeight: 1.85, margin: "0 0 14px", fontFamily: "'Georgia', serif", color: "#cbd5e1" }}>
+            <span style={{ color: "#f8fafc", fontWeight: 600 }}>Talabat dominates the week</span> across two fronts: Q1 2026 results (12 May) beat guidance with GMV up 18% to $2.7B and raised full-year net income guidance to $300–330M, while its Cairo hub — MENA's largest at 27,000 sqm — became operational 28 April, processing up to 1 million items daily across 12 Egyptian cities.
+          </p>
+          <p style={{ fontSize: 15, lineHeight: 1.85, margin: "0 0 14px", fontFamily: "'Georgia', serif", color: "#cbd5e1" }}>
+            <span style={{ color: "#f8fafc", fontWeight: 600 }}>Three IPO stories converge:</span> Noon confirmed its dual UAE-Saudi listing within 24 months at ~$10B valuation; Ninja is lining up Goldman Sachs and Citi for a $1B Tadawul debut; Careem is approaching IPO-readiness after its first profitable year. The MEATR platform economy is entering a public-markets phase.
+          </p>
+          <p style={{ fontSize: 14, lineHeight: 1.8, margin: 0, fontFamily: "'Georgia', serif", color: "#64748b", fontStyle: "italic" }}>
+            ⚠ Monitoring: Alshaya Group's regulatory push against Shein/Temu at the UAE-Kuwait Economic Forum (2 Feb) — watch for GCC government response in H2 2026.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 24, marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+            {[{ label: "Stories", value: "21" }, { label: "Corroborated", value: "8 / 21" }, { label: "Talabat Q1 GMV", value: "$2.7B" }, { label: "Markets", value: "UAE · KSA · EGY · TR · ZA" }].map(s => (
+              <div key={s.label}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#f8fafc", fontFamily: "'DM Sans', sans-serif" }}>{s.value}</div>
+                <div style={{ fontSize: 10, color: "#475569", fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: C.subtle, fontFamily: "'DM Mono', monospace", marginBottom: 12 }}>
+        {showAll ? "All stories — chronological" : "Insights — ranked by focus areas"}
+        {competitor !== "All" && <span style={{ color: C.dark, fontWeight: 700 }}> · {competitor}</span>}
+      </p>
+
+      {filteredInsights.length === 0 ? (
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 28, textAlign: "center" }}>
+          <p style={{ fontSize: 14, color: C.muted, fontFamily: "'DM Sans', sans-serif", margin: 0 }}>No stories today for {competitor}. Try another company or check back later.</p>
+        </div>
+      ) : (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {filteredInsights.map(insight => {
+          const saved = bookmarks.includes(insight.id);
+          return (
+            <div key={insight.id} style={{ border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", background: C.surface, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              <div style={{
+                padding: "14px 18px", borderLeft: `4px solid ${insight.categoryColor}`,
+                cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
+              }} onClick={() => setExpanded(expanded === insight.id ? null : insight.id)}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                    <CategoryTag category={insight.category} color={insight.categoryColor} />
+                    <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: C.subtle }}>
+                      {insight.relevanceScore}% match
+                    </span>
+                    {insight.competitor && (
+                      <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 10, background: C.faint, color: C.muted, border: `1px solid ${C.border}`, fontFamily: "'DM Mono', monospace" }}>
+                        {insight.competitor}
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: C.dark, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.4 }}>
+                    {insight.headline}
+                  </p>
+                  {insight.matchedTags.length > 0 && (
+                    <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                      {insight.matchedTags.map(t => (
+                        <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "#eff6ff", color: "#1d4ed8", fontFamily: "'DM Mono', monospace" }}>{t}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  {!insight.corroborated && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "#fff7ed", color: C.orange, border: `1px solid #fed7aa` }}>!</span>
+                  )}
+                  <button onClick={e => { e.stopPropagation(); onBookmark(insight.id); }} style={{
+                    background: "none", border: "none", cursor: "pointer", fontSize: 16,
+                    color: saved ? "#f59e0b" : C.border, padding: 2,
+                    transition: "color 0.15s",
+                  }} title={saved ? "Saved" : "Save article"}>
+                    {saved ? "★" : "☆"}
+                  </button>
+                  <span style={{ color: C.border, fontSize: 16, transform: expanded === insight.id ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>⌄</span>
+                </div>
+              </div>
+
+              {expanded === insight.id && (
+                <div style={{ padding: "16px 18px 18px", borderTop: `1px solid ${C.faint}`, background: "#fafafa" }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.8, color: "#334155", margin: "0 0 14px", fontFamily: "'Georgia', serif" }}>
+                    {insight.synthesis}
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {insight.sources.map((s, i) => <SourceChip key={i} source={s} />)}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      )}
+    </div>
+  );
+};
+
+// ─── TRENDS DATA ─────────────────────────────────────────────────────────────
+const MARKETS = [
+  { id: "all", label: "All Markets" },
+  { id: "gcc", label: "GCC", markets: ["UAE", "KSA"] },
+  { id: "mea", label: "MEA", markets: ["UAE", "KSA", "Egypt", "South Africa"] },
+  { id: "meatr", label: "MEATR", markets: ["UAE", "KSA", "Egypt", "South Africa", "Turkey"] },
+  { id: "uae", label: "UAE" },
+  { id: "ksa", label: "KSA" },
+  { id: "egypt", label: "Egypt" },
+  { id: "turkey", label: "Turkey" },
+  { id: "southafrica", label: "South Africa" },
+];
+
+const COMPETITORS = ["All Competitors", "Temu", "Noon", "Shein", "Namshi", "Tabby", "Tamara", "Aramex", "Trendyol"];
+
+const TRENDS_DATA = {
+  weekly: {
+    period: "1 May – 7 May 2026",
+    storiesAnalysed: 34,
+    readMins: 4,
+    summary: "Temu dominated the week with two simultaneous infrastructure announcements across UAE and KSA — the most operationally significant Chinese platform move in MENA this year. BNPL capital continued flowing in at pace, with Tabby's $200M Series D closing on 7 May. No major regulatory moves were finalised, though ZATCA's draft marketplace VAT guidance (Arab News, 6 May) remains in circulation and warrants monitoring.",
+    insights: [
+      {
+        id: "t1", category: "Competitor Moves", categoryColor: C.red,
+        headline: "Temu makes its most credible MENA infrastructure commitment to date",
+        markets: ["UAE", "KSA"], competitor: "Temu", corroborated: true,
+        sections: [
+          {
+            theme: "What happened",
+            body: "On 5 May 2026, Reuters confirmed Temu signed a warehouse agreement with Dubai Industrial City covering approximately 45,000 sqm of fulfilment space. Within 24 hours, The National and AGBI independently corroborated a second agreement at KAEC's logistics zone in Riyadh — a facility of comparable scale. Both agreements are expected to become operational by Q4 2026, subject to fit-out timelines.",
+          },
+          {
+            theme: "Why it matters",
+            body: "Until this week, Temu's MENA model was purely cross-border: goods shipped from Chinese warehouses with 10–14 day delivery windows. Local infrastructure closes that gap to an estimated 2–3 days — directly comparable to Amazon Prime delivery in UAE and KSA. This is the threshold at which price-sensitive consumers begin substituting platforms rather than tolerating delivery wait times as a cost of Temu's lower prices.",
+          },
+          {
+            theme: "Competitive implication",
+            body: "Amazon's last-mile speed advantage — built over a decade of logistics investment — narrows materially if Temu reaches delivery parity by Q1 2027. The more immediate pressure is on seller acquisition: Temu's hybrid model will allow it to onboard UAE and KSA-based sellers onto a fulfilment network for the first time, reducing its dependence on Chinese-origin inventory and broadening category coverage in fashion, electronics, and home goods.",
+          },
+        ],
+        sources: [
+          { name: "Reuters", tier: 1, url: "https://reuters.com", date: "6 May 2026", paywall: false },
+          { name: "The National", tier: 1, url: "https://thenationalnews.com", date: "5 May 2026", paywall: false },
+          { name: "AGBI", tier: 1, url: "https://agbi.com", date: "4 May 2026", paywall: false },
+        ],
+      },
+      {
+        id: "t2", category: "Funding & M&A", categoryColor: C.blue,
+        headline: "$540M in GCC BNPL capital raised in under 90 days — structural shift, not a cycle",
+        markets: ["KSA", "UAE"], competitor: "Tabby", corroborated: true,
+        sections: [
+          {
+            theme: "The capital flow",
+            body: "Tabby closed a $200M Series D on 7 May 2026 at a post-money valuation of $1.5B (Bloomberg, 7 May). This follows Tamara's $340M raise in Q1 2026, bringing combined fresh capital into GCC BNPL to $540M in under 90 days. Both rounds are earmarked primarily for Saudi Arabia merchant acquisition — Tabby has publicly stated a target of 10,000 new KSA merchants by end of 2026, up from approximately 6,500 today (Wamda, 7 May).",
+          },
+          {
+            theme: "Market structure forming",
+            body: "The two-platform dynamic — Tabby dominant in UAE, Tamara stronger in KSA — is hardening into a duopoly. Combined annualised GMV exceeded $4B in Q1 2026 (Magnitt estimate, Mar 2026). Neither platform is profitable at current scale, but the capital runway now extends to late 2028 for both, meaning the merchant acquisition war will intensify before any rationalisation occurs.",
+          },
+          {
+            theme: "Amazon Pay exposure",
+            body: "BNPL now represents an estimated 18–22% of checkout completions on third-party MENA e-commerce sites (Redseer, Q1 2026). As Tabby and Tamara expand their merchant APIs — and move into B2B invoice financing — they are building payment infrastructure that could eventually bypass marketplace checkout entirely. Amazon Pay's relevance depends on Amazon's marketplace remaining the dominant transaction surface.",
+          },
+        ],
+        sources: [
+          { name: "Bloomberg", tier: 1, url: "https://bloomberg.com", date: "7 May 2026", paywall: true },
+          { name: "Wamda", tier: 2, url: "https://wamda.com", date: "7 May 2026", paywall: false },
+          { name: "Magnitt", tier: 2, url: "https://magnitt.com", date: "15 Mar 2026", paywall: false },
+        ],
+      },
+    ],
+  },
+  monthly: {
+    period: "April – May 2026",
+    storiesAnalysed: 112,
+    readMins: 8,
+    summary: "April and May together confirmed two structural shifts taking hold simultaneously: Chinese and Turkish platforms are transitioning from cross-border testing to local infrastructure investment across MEATR, and the GCC BNPL market is consolidating rapidly around Tabby and Tamara with $540M in fresh capital between them. Noon's quiet Riyadh suburban expansion adds a third dimension — incumbent regional players are also accelerating. South Africa's Takealot signed its first pan-African logistics partnership in late April, a signal worth tracking for broader MEATR implications.",
+    insights: [
+      {
+        id: "m1", category: "Competitor Moves", categoryColor: C.red,
+        headline: "Chinese and Turkish platform localisation: from testing to infrastructure commitment",
+        markets: ["UAE", "KSA", "Egypt", "Turkey"], competitor: "Temu", corroborated: true,
+        sections: [
+          {
+            theme: "The pattern across April–May",
+            body: "Three separate infrastructure moves in under three weeks signal a coordinated — if independent — pivot by non-Amazon platforms. Shein opened its first MENA returns hub in Dubai's Jebel Ali Free Zone on 28 April (AGBI, 28 Apr), reducing return friction for UAE customers and cutting reverse logistics costs by an estimated 30–40% versus cross-border processing. Temu followed on 5–6 May with its dual warehouse announcements in Dubai and Riyadh. Trendyol, meanwhile, quietly expanded into Egyptian fashion and home categories on 22 April (Zawya, 22 Apr), initially as a cross-border offering but with a stated intention to establish local fulfilment by Q3 2026.",
+          },
+          {
+            theme: "Capital deployed and scale",
+            body: "Aggregating the three moves: Shein's Jebel Ali hub is reported at approximately $80M in fit-out and inventory commitment (AGBI, 28 Apr); Temu's two warehouses are estimated at $120–150M in combined lease and fit-out costs (Reuters, 6 May); Trendyol has not disclosed figures for its Egypt entry but its parent Dollarama disclosed $45M in MENA-earmarked capex in its Q1 2026 earnings (FT, 2 Apr). Combined, that is $245–275M in Q2 2026 alone — more than any prior six-month period for non-Amazon platform investment in MEATR.",
+          },
+          {
+            theme: "What changes for Amazon",
+            body: "Amazon's competitive moat in MENA has historically rested on three pillars: delivery speed, seller breadth, and customer trust. Delivery speed is now under direct attack from multiple directions simultaneously. Seller breadth faces pressure as Temu and Shein bring their Chinese manufacturer relationships into local fulfilment — undercutting on price in electronics accessories, homeware, and apparel. The trust pillar remains Amazon's clearest differentiator, particularly in KSA where Prime membership retention is high.",
+          },
+        ],
+        sources: [
+          { name: "Reuters", tier: 1, url: "https://reuters.com", date: "6 May 2026", paywall: false },
+          { name: "AGBI", tier: 1, url: "https://agbi.com", date: "28 Apr 2026", paywall: false },
+          { name: "Zawya", tier: 1, url: "https://zawya.com", date: "22 Apr 2026", paywall: false },
+          { name: "FT", tier: 1, url: "https://ft.com", date: "2 Apr 2026", paywall: true },
+        ],
+      },
+      {
+        id: "m2", category: "Last-Mile & Logistics", categoryColor: "#0891b2",
+        headline: "Noon's KSA suburban push: a quiet but deliberate escalation",
+        markets: ["KSA"], competitor: "Noon", corroborated: true,
+        sections: [
+          {
+            theme: "The move",
+            body: "Noon expanded same-day delivery coverage to six Riyadh suburban districts on 6 May 2026 — Al Rawdah, Al Malaz, Al Naseem, Al Salam, Dhahrat Laban, and Al Aqiq (Arab News, 6 May). This follows a Q1 2026 upgrade to Noon's UAE fulfilment infrastructure that added two dark stores in Sharjah and Abu Dhabi (The National, 3 May). The KSA move is notable because Noon's previous same-day coverage in Riyadh was limited to central districts, leaving suburban areas — which account for approximately 55% of Riyadh's population — on next-day timelines.",
+          },
+          {
+            theme: "Strategic context",
+            body: "Noon is not competing with Amazon on breadth or price globally — it is competing on hyper-local delivery speed in its home markets. Its Saudi operations benefit from strong government relationships (the Public Investment Fund holds a significant stake) and a culturally familiar brand. The suburban expansion is best read as a deliberate effort to close the delivery experience gap with Amazon Prime in the specific geographies where Saudi middle-income consumers are concentrated.",
+          },
+          {
+            theme: "Implication for Amazon KSA",
+            body: "Amazon's Saudi operations are infrastructure-heavy in central Riyadh but comparatively thin in suburban coverage. If Noon achieves same-day parity across greater Riyadh by Q3 2026 — as its trajectory suggests — Amazon's Prime proposition in KSA becomes harder to differentiate on speed alone. Price and selection remain advantages, but speed has been Amazon's most defensible edge in driving Prime membership retention.",
+          },
+        ],
+        sources: [
+          { name: "Arab News", tier: 1, url: "https://arabnews.com", date: "6 May 2026", paywall: false },
+          { name: "The National", tier: 1, url: "https://thenationalnews.com", date: "3 May 2026", paywall: false },
+        ],
+      },
+      {
+        id: "m3", category: "Emerging Markets", categoryColor: "#059669",
+        headline: "South Africa: Takealot's pan-African logistics move — watch, don't act yet",
+        markets: ["South Africa"], competitor: "Takealot", corroborated: false,
+        sections: [
+          {
+            theme: "What was reported",
+            body: "Zawya reported on 29 April 2026 that Takealot — South Africa's dominant e-commerce platform, owned by Prosus — signed a logistics partnership with an unnamed pan-African carrier to extend its fulfilment reach into Zambia, Zimbabwe, and Mozambique. The report is single-source and Takealot has not issued a press release. Treat as unconfirmed.",
+          },
+          {
+            theme: "Why it merits tracking",
+            body: "If substantiated, this would be the first significant move by a Southern African e-commerce platform toward a pan-African distribution model. South Africa's e-commerce market reached approximately $5.2B GMV in 2025 (Statista) — small by GCC standards but growing at 18% annually. A logistics infrastructure anchored in Johannesburg could eventually serve as an entry point for MEATR platforms seeking African expansion, or conversely, a path for African platforms to move northward toward Egypt and the broader MEA footprint.",
+          },
+        ],
+        sources: [
+          { name: "Zawya", tier: 1, url: "https://zawya.com", date: "29 Apr 2026", paywall: false },
+        ],
+      },
+    ],
+  },
+  quarterly: {
+    period: "Q1–Q2 2026 (Jan – May)",
+    storiesAnalysed: 287,
+    readMins: 12,
+    summary: "The first half of 2026 represents a genuine inflection point in the MEATR e-commerce competitive landscape. Three converging forces define the period: (1) non-Amazon platforms have collectively deployed an estimated $245–275M in MEATR infrastructure in Q2 alone, eroding Amazon's delivery speed moat; (2) $540M in fresh BNPL capital has entered GCC in under 90 days, threatening Amazon Pay's checkout relevance; and (3) Turkey and South Africa have each produced first signals of meaningful MEATR engagement, expanding the competitive perimeter. The landscape Amazon faces entering H2 2026 is structurally more contested than at any point since Amazon.ae launched in 2019.",
+    insights: [
+      {
+        id: "q1", category: "Strategic Shift", categoryColor: "#7c3aed",
+        headline: "The infrastructure investment race: ~$1B deployed by non-Amazon platforms across MEATR in H1 2026",
+        markets: ["UAE", "KSA", "Egypt", "Turkey"], competitor: "Temu", corroborated: true,
+        sections: [
+          {
+            theme: "Scale of investment",
+            body: "Aggregating reported and estimated capital commitments: Noon's UAE and KSA fulfilment upgrades (~$180M, Q1 2026, AGBI Mar 2026); Shein's Dubai returns hub (~$80M, 28 Apr, AGBI); Temu's dual UAE/KSA warehouse agreements (~$120–150M, May 2026, Reuters); Trendyol's MENA-earmarked capex ($45M disclosed, Q1 earnings, FT Apr 2026); and Namshi's logistics partnership with Aramex for next-day UAE coverage (~$35M estimated, Zawya Feb 2026). Conservative total: $460–490M. Upper estimate, incorporating undisclosed components: ~$600M. In no prior six-month period has non-Amazon infrastructure spend in MEATR approached this scale.",
+          },
+          {
+            theme: "The shared strategic logic",
+            body: "This is not coordinated — it reflects simultaneous recognition of the same market dynamic. Cross-border e-commerce, which powered the growth of Chinese and Turkish platforms in MENA through 2023–2024, has hit a structural ceiling: consumers tolerate 10–14 day delivery for deeply discounted goods but churn when alternatives offer comparable prices at 2–3 day delivery. Local fulfilment is the unlock. Every platform investing in MEATR infrastructure in H1 2026 is making the same bet: that the MENA e-commerce market is large enough — and growing fast enough at 22% CAGR through 2028 per Redseer — to justify the capital outlay.",
+          },
+          {
+            theme: "Amazon's position",
+            body: "Amazon's incumbency advantage — the largest fulfilment network, the most established Prime base, the deepest seller relationships — remains intact. But it is no longer a moat; it is a head start that competitors are actively closing. The critical metric to watch in H2 2026 is Prime membership churn in UAE and KSA. If Temu achieves delivery parity by Q4 2026 as planned, and Noon closes suburban KSA coverage gaps by Q3, the case for a Prime subscription becomes harder to articulate on speed alone. Amazon's response — whether through Prime price adjustments, exclusive content bundling, or accelerated fulfilment investment — will define H2.",
+          },
+        ],
+        sources: [
+          { name: "Bloomberg", tier: 1, url: "https://bloomberg.com", date: "7 May 2026", paywall: true },
+          { name: "FT", tier: 1, url: "https://ft.com", date: "2 Apr 2026", paywall: true },
+          { name: "Reuters", tier: 1, url: "https://reuters.com", date: "6 May 2026", paywall: false },
+          { name: "AGBI", tier: 1, url: "https://agbi.com", date: "15 Mar 2026", paywall: false },
+          { name: "Redseer", tier: 2, url: "https://redseer.com", date: "Jan 2026", paywall: false },
+        ],
+      },
+      {
+        id: "q2", category: "Payments", categoryColor: C.blue,
+        headline: "BNPL is no longer a checkout feature — it is becoming a competing payment infrastructure",
+        markets: ["KSA", "UAE", "Egypt"], competitor: "Tabby", corroborated: true,
+        sections: [
+          {
+            theme: "Where the market stands",
+            body: "Combined Tabby and Tamara annualised GMV surpassed $4B in Q1 2026 (Magnitt, Mar 2026), up from $2.1B in Q1 2025 — 90% year-on-year growth. BNPL penetration across GCC e-commerce checkouts reached 18–22% in Q1 2026 (Redseer, Q1 2026), compared with 9% in Q1 2024. The $540M in combined fresh capital raised in Q1–Q2 2026 extends both platforms' runways to late 2028, removing near-term profitability pressure and enabling sustained merchant subsidy and consumer cashback campaigns.",
+          },
+          {
+            theme: "The infrastructure ambition",
+            body: "Both platforms are moving beyond consumer BNPL into merchant financial infrastructure. Tabby launched a working capital product for SME merchants in March 2026 (Wamda, 15 Mar), offering 30–90 day inventory financing at rates competitive with traditional bank lending. Tamara followed with a similar product in April (Arab News, 18 Apr). This B2B pivot is strategically significant: it embeds both platforms into merchant cash flow management, creating switching costs that extend well beyond checkout preference.",
+          },
+          {
+            theme: "The Amazon Pay question",
+            body: "Amazon Pay currently benefits from Amazon's marketplace position — it is the default checkout option for tens of millions of MENA transactions annually. But as Tabby and Tamara build direct merchant integrations — and as merchants increasingly offer BNPL as a preferred option outside of Amazon's ecosystem — Amazon Pay's share of off-Amazon transactions is under structural pressure. The risk is not that Amazon Pay disappears; it is that BNPL platforms become the dominant payment rails for MENA e-commerce broadly, reducing Amazon's leverage in payment negotiations with merchants.",
+          },
+        ],
+        sources: [
+          { name: "Magnitt", tier: 2, url: "https://magnitt.com", date: "15 Mar 2026", paywall: false },
+          { name: "Redseer", tier: 2, url: "https://redseer.com", date: "Q1 2026", paywall: false },
+          { name: "Bloomberg", tier: 1, url: "https://bloomberg.com", date: "7 May 2026", paywall: true },
+          { name: "Wamda", tier: 2, url: "https://wamda.com", date: "15 Mar 2026", paywall: false },
+          { name: "Arab News", tier: 1, url: "https://arabnews.com", date: "18 Apr 2026", paywall: false },
+        ],
+      },
+      {
+        id: "q3", category: "Emerging Markets", categoryColor: "#059669",
+        headline: "Turkey and South Africa: the competitive perimeter is expanding",
+        markets: ["Turkey", "South Africa", "Egypt"], competitor: "Trendyol", corroborated: true,
+        sections: [
+          {
+            theme: "Turkey: Trendyol's Egypt entry",
+            body: "Trendyol — Turkey's dominant e-commerce platform with $22B GMV in 2025 (FT, Jan 2026) — made its first substantive MEATR move in April 2026 with a cross-border expansion into Egyptian fashion and home categories (Zawya, 22 Apr). The entry is initially limited: no local fulfilment, Türkiye-origin inventory only, targeting the 18–35 demographic in Cairo and Alexandria. But Trendyol's disclosed $45M MENA capex (Q1 earnings, FT Apr 2026) signals an intent to move beyond cross-border within 12–18 months. Egypt is a logical entry point given geographic proximity, cultural affinity in fashion taste, and a 105M-person consumer base at relatively early e-commerce penetration (~8% of retail, vs ~15% in UAE).",
+          },
+          {
+            theme: "South Africa: Takealot's pan-African signal",
+            body: "Takealot's reported logistics partnership for Zambia, Zimbabwe, and Mozambique coverage (Zawya, 29 Apr — unconfirmed, single-source) would, if substantiated, represent the first Southern African platform building pan-African fulfilment infrastructure. South Africa's e-commerce market reached $5.2B GMV in 2025 (Statista) growing at 18% annually. The strategic relevance for MEATR is indirect but real: if a pan-African logistics spine develops anchored in Johannesburg, it creates eventual connectivity to the East African corridor and northward toward Egypt — a potential future avenue for both market entry and logistics arbitrage.",
+          },
+          {
+            theme: "What to watch in H2 2026",
+            body: "For Turkey: whether Trendyol announces local Egyptian fulfilment, hires a country GM, or raises Egypt-specific capital. Any two of these three signals within the same quarter would indicate a genuine commitment rather than a market test. For South Africa: corroboration of the Takealot logistics deal from a second Tier 1 source, and any indication of Prosus directing incremental capital toward the pan-African opportunity. Neither market is an immediate competitive threat to Amazon MEATR — but both suggest the competitive landscape in 2027–2028 will be materially broader than today.",
+          },
+        ],
+        sources: [
+          { name: "Zawya", tier: 1, url: "https://zawya.com", date: "22 Apr 2026", paywall: false },
+          { name: "AGBI", tier: 1, url: "https://agbi.com", date: "29 Apr 2026", paywall: false },
+          { name: "FT", tier: 1, url: "https://ft.com", date: "Jan 2026", paywall: true },
+        ],
+      },
+    ],
+  },
+};
+
+// ─── TRENDS TAB ───────────────────────────────────────────────────────────────
+const TrendsTab = ({ competitor, setCompetitor, competitors }) => {
+  const [horizon, setHorizon] = useState("monthly");
+  const [market, setMarket] = useState("all");
+  const [customDate, setCustomDate] = useState(false);
+  const [dateFrom, setDateFrom] = useState("2026-04-01");
+  const [dateTo, setDateTo] = useState("2026-05-07");
+
+  const data = TRENDS_DATA[horizon];
+
+  const filteredInsights = data.insights.filter(insight => {
+    const mObj = MARKETS.find(mk => mk.id === market);
+    const marketMatch = market === "all" || (
+      mObj?.markets
+        ? insight.markets.some(m => mObj.markets.includes(m))
+        : insight.markets.map(m => m.toLowerCase().replace(" ", "")).includes(market)
+    );
+    const competitorMatch = competitor === "All" || insight.company === company;
+    return marketMatch && competitorMatch;
+  });
+
+  const scopeParts = [
+    market !== "all" ? MARKETS.find(m => m.id === market)?.label : null,
+    competitor !== "All Competitors" ? competitor : null,
+    customDate ? `${dateFrom} → ${dateTo}` : data.period,
+  ].filter(Boolean);
+
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+
+      {/* Header row */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <p style={{ fontSize: 11, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 4px" }}>Strategic Intelligence</p>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: C.dark, margin: "0 0 6px", fontFamily: "'DM Sans', sans-serif" }}>Trends Roundup</h2>
+          {/* Read time estimate */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.subtle, fontFamily: "'DM Mono', monospace" }}>⏱ {data.readMins} min read</span>
+            <span style={{ color: C.border }}>·</span>
+            <span style={{ fontSize: 12, color: C.subtle, fontFamily: "'DM Mono', monospace" }}>{data.storiesAnalysed} stories analysed</span>
+            <span style={{ color: C.border }}>·</span>
+            <span style={{ fontSize: 12, color: C.subtle, fontFamily: "'DM Mono', monospace" }}>{filteredInsights.length} insight{filteredInsights.length !== 1 ? "s" : ""}</span>
+          </div>
+        </div>
+        <button style={{
+          padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
+          fontFamily: "'DM Sans', sans-serif", border: `1px solid ${C.border}`,
+          background: C.surface, color: C.muted, display: "flex", alignItems: "center", gap: 6,
+        }}>↓ Export PDF</button>
+      </div>
+
+      {/* Filter bar */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
+        <p style={{ fontSize: 10, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" }}>Filters</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+          {/* Horizon */}
+          <div>
+            <p style={{ fontSize: 10, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>Time horizon</p>
+            <div style={{ display: "flex", gap: 4 }}>
+              {["weekly", "monthly", "quarterly"].map(h => (
+                <button key={h} onClick={() => { setHorizon(h); setCustomDate(false); }} style={{
+                  padding: "5px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                  fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s",
+                  border: horizon === h && !customDate ? "none" : `1px solid ${C.border}`,
+                  background: horizon === h && !customDate ? C.dark : C.surface,
+                  color: horizon === h && !customDate ? "#f8fafc" : C.muted,
+                }}>{h.charAt(0).toUpperCase() + h.slice(1)}</button>
+              ))}
+              <button onClick={() => setCustomDate(!customDate)} style={{
+                padding: "5px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s",
+                border: customDate ? "none" : `1px solid ${C.border}`,
+                background: customDate ? "#7c3aed" : C.surface,
+                color: customDate ? "#f8fafc" : C.muted,
+              }}>Custom</button>
+            </div>
+          </div>
+          {/* Market */}
+          <div>
+            <p style={{ fontSize: 10, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>Market</p>
+            <select value={market} onChange={e => setMarket(e.target.value)} style={{
+              padding: "5px 10px", borderRadius: 6, fontSize: 12, fontFamily: "'DM Sans', sans-serif",
+              border: `1px solid ${C.border}`, background: C.surface, color: C.dark, cursor: "pointer", outline: "none",
+            }}>
+              {MARKETS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+            </select>
+          </div>
+          {/* Competitor */}
+          <div>
+            <p style={{ fontSize: 10, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>Company</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+              {competitors.map(c => {
+                const active = competitor === c;
+                return (
+                  <button key={c} onClick={() => setCompetitor(c)} style={{
+                    padding: "4px 11px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                    cursor: "pointer", fontFamily: "'DM Mono', monospace", transition: "all 0.15s",
+                    border: active ? "none" : `1px solid ${C.border}`,
+                    background: active ? C.dark : C.surface,
+                    color: active ? "#f8fafc" : C.muted,
+                  }}>{c}</button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        {/* Custom date range */}
+        {customDate && (
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+            <div>
+              <p style={{ fontSize: 10, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", margin: "0 0 4px" }}>From</p>
+              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ padding: "5px 10px", borderRadius: 6, fontSize: 12, fontFamily: "'DM Sans', sans-serif", border: `1px solid ${C.border}`, background: C.surface, color: C.dark, outline: "none" }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 10, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", margin: "0 0 4px" }}>To</p>
+              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ padding: "5px 10px", borderRadius: 6, fontSize: 12, fontFamily: "'DM Sans', sans-serif", border: `1px solid ${C.border}`, background: C.surface, color: C.dark, outline: "none" }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Scope pill */}
+      {scopeParts.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.08em" }}>Showing:</span>
+          {scopeParts.map(p => (
+            <span key={p} style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#f3e8ff", color: "#7c3aed", border: "1px solid #e9d5ff", fontFamily: "'DM Mono', monospace" }}>{p}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Executive summary */}
+      <div style={{ background: `linear-gradient(135deg, ${C.dark} 0%, ${C.darkMid} 100%)`, borderRadius: 14, padding: "22px 26px", marginBottom: 28 }}>
+        <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "#475569", fontFamily: "'DM Mono', monospace", margin: "0 0 12px" }}>
+          {horizon.charAt(0).toUpperCase() + horizon.slice(1)} Summary · {customDate ? `${dateFrom} → ${dateTo}` : data.period}
+        </p>
+        <p style={{ fontSize: 15, lineHeight: 1.9, margin: 0, fontFamily: "'Georgia', serif", color: "#cbd5e1" }}>{data.summary}</p>
+      </div>
+
+      {/* Insights — fully expanded, themed sections */}
+      {filteredInsights.length === 0 ? (
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 28, textAlign: "center" }}>
+          <p style={{ fontSize: 14, color: C.muted, fontFamily: "'DM Sans', sans-serif", margin: 0 }}>No insights match your current filters. Try broadening the market or competitor selection.</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          {filteredInsights.map((insight, idx) => (
+            <div key={insight.id} style={{ border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", background: C.surface, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+
+              {/* Card header */}
+              <div style={{ padding: "18px 22px 16px", borderLeft: `5px solid ${insight.categoryColor}`, borderBottom: `1px solid ${C.faint}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                  <CategoryTag category={insight.category} color={insight.categoryColor} />
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {insight.markets.map(m => (
+                      <span key={m} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", fontFamily: "'DM Mono', monospace" }}>{m}</span>
+                    ))}
+                  </div>
+                  {!insight.corroborated && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "#fff7ed", color: C.orange, border: "1px solid #fed7aa" }}>⚠ Single source</span>
+                  )}
+                </div>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: C.dark, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.35 }}>
+                  {insight.headline}
+                </h3>
+              </div>
+
+              {/* Themed sections */}
+              <div style={{ padding: "0 22px 22px" }}>
+                {insight.sections.map((section, sIdx) => (
+                  <div key={sIdx} style={{ marginTop: 22 }}>
+                    <p style={{
+                      fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
+                      color: insight.categoryColor, fontFamily: "'DM Mono', monospace",
+                      margin: "0 0 8px", display: "flex", alignItems: "center", gap: 8,
+                    }}>
+                      <span style={{ display: "inline-block", width: 18, height: 2, background: insight.categoryColor, borderRadius: 1 }} />
+                      {section.theme}
+                    </p>
+                    <p style={{ fontSize: 14, lineHeight: 1.85, color: "#334155", margin: 0, fontFamily: "'Georgia', serif" }}>
+                      {section.body}
+                    </p>
+                  </div>
+                ))}
+
+                {/* Sources */}
+                <div style={{ marginTop: 22, paddingTop: 16, borderTop: `1px solid ${C.faint}` }}>
+                  <p style={{ fontSize: 10, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 8px" }}>Sources</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {insight.sources.map((s, i) => (
+                      <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 6,
+                          padding: "4px 10px", borderRadius: 20,
+                          border: `1px solid ${C.border}`, background: C.faint,
+                          fontSize: 12, color: "#334155", textDecoration: "none",
+                          fontFamily: "'DM Mono', monospace", transition: "all 0.15s",
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = C.dark; e.currentTarget.style.color = "#f8fafc"; e.currentTarget.style.borderColor = C.dark; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = C.faint; e.currentTarget.style.color = "#334155"; e.currentTarget.style.borderColor = C.border; }}
+                      >
+                        <TierBadge tier={s.tier} />
+                        {s.paywall && <span title="Paywalled">🔒</span>}
+                        {s.name}
+                        <span style={{ opacity: 0.45 }}>{s.date}</span>
+                        <span style={{ fontSize: 10, opacity: 0.4 }}>↗</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── SAVED TAB ────────────────────────────────────────────────────────────────
+const SavedTab = ({ bookmarks, tags }) => {
+  const tagFrequency = { "Saudi last-mile logistics": 2, "BNPL penetration": 1, "Chinese platform expansion": 1, "Marketplace regulation": 1 };
+  const total = Object.values(tagFrequency).reduce((a, b) => a + b, 0);
+
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ marginBottom: 24 }}>
+        <p style={{ fontSize: 11, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 4px" }}>Your Library</p>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: C.dark, margin: 0, fontFamily: "'DM Sans', sans-serif" }}>Saved Articles</h2>
+      </div>
+
+      {/* Learning panel */}
+      <div style={{ background: `linear-gradient(135deg, ${C.dark} 0%, ${C.darkMid} 100%)`, borderRadius: 14, padding: "22px 26px", marginBottom: 24 }}>
+        <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "#475569", fontFamily: "'DM Mono', monospace", margin: "0 0 12px" }}>
+          What the app has learned from your saves
+        </p>
+        <p style={{ fontSize: 14, lineHeight: 1.75, color: "#cbd5e1", fontFamily: "'Georgia', serif", margin: "0 0 18px" }}>
+          Based on <span style={{ color: "#f8fafc", fontWeight: 600 }}>{SAVED_ARTICLES.length} saved articles</span> over the past 3 weeks, you consistently prioritise <span style={{ color: "#f8fafc", fontWeight: 600 }}>Saudi last-mile logistics</span> (50%) and <span style={{ color: "#f8fafc", fontWeight: 600 }}>BNPL & payments</span> (25%). Your daily feed is being weighted accordingly. Chinese platform expansion and regulatory items are deprioritised unless corroborated by 2+ Tier 1 sources.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {Object.entries(tagFrequency).map(([tag, count]) => (
+            <div key={tag} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 11, color: "#94a3b8", fontFamily: "'DM Mono', monospace", width: 200, flexShrink: 0 }}>{tag}</span>
+              <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{ width: `${(count / total) * 100}%`, height: "100%", background: "#3b82f6", borderRadius: 3, transition: "width 0.6s ease" }} />
+              </div>
+              <span style={{ fontSize: 11, color: "#64748b", fontFamily: "'DM Mono', monospace", width: 32, textAlign: "right" }}>{Math.round((count / total) * 100)}%</span>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize: 11, color: "#475569", fontFamily: "'DM Mono', monospace", margin: "14px 0 0" }}>
+          To correct this, adjust your interest profile in Settings →
+        </p>
+      </div>
+
+      {/* Saved articles list */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {SAVED_ARTICLES.map(article => (
+          <div key={article.id} style={{ border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 18px", background: C.surface, display: "flex", alignItems: "flex-start", gap: 14 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <CategoryTag category={article.category} color={article.category === "Competitor Moves" ? C.red : article.category === "Funding & M&A" ? C.blue : C.purple} />
+                <span style={{ fontSize: 11, color: C.subtle, fontFamily: "'DM Mono', monospace" }}>{article.date}</span>
+              </div>
+              <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 600, color: C.dark, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.4 }}>
+                {article.headline}
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <SourceChip source={{ name: article.source, tier: article.tier, url: article.url, date: article.date }} />
+                {article.tags.map(t => (
+                  <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "#eff6ff", color: "#1d4ed8", fontFamily: "'DM Mono', monospace" }}>{t}</span>
+                ))}
+              </div>
+            </div>
+            <span style={{ color: "#f59e0b", fontSize: 18, flexShrink: 0 }}>★</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── SETTINGS / INTEREST PROFILE TAB ─────────────────────────────────────────
+const SettingsTab = ({ tags, setTags }) => {
+  const [input, setInput] = useState("");
+  const [dragOver, setDragOver] = useState(null);
+
+  const addTag = () => {
+    const trimmed = input.trim();
+    if (!trimmed || tags.find(t => t.label.toLowerCase() === trimmed.toLowerCase())) return;
+    setTags([...tags, { id: Date.now(), label: trimmed, active: true, priority: tags.length + 1 }]);
+    setInput("");
+  };
+
+  const removeTag = (id) => setTags(tags.filter(t => t.id !== id));
+  const toggleTag = (id) => setTags(tags.map(t => t.id === id ? { ...t, active: !t.active } : t));
+
+  const moveTag = (id, dir) => {
+    const idx = tags.findIndex(t => t.id === id);
+    if (dir === "up" && idx === 0) return;
+    if (dir === "down" && idx === tags.length - 1) return;
+    const newTags = [...tags];
+    const swap = dir === "up" ? idx - 1 : idx + 1;
+    [newTags[idx], newTags[swap]] = [newTags[swap], newTags[idx]];
+    setTags(newTags.map((t, i) => ({ ...t, priority: i + 1 })));
+  };
+
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ marginBottom: 28 }}>
+        <p style={{ fontSize: 11, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 4px" }}>Personalisation</p>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: C.dark, margin: "0 0 8px", fontFamily: "'DM Sans', sans-serif" }}>Interest Profile</h2>
+        <p style={{ fontSize: 14, color: C.muted, margin: 0, fontFamily: "'Georgia', serif", lineHeight: 1.6 }}>
+          These tags tell the app what to surface first. Higher priority = ranked first in your daily feed. Toggle off to deprioritise without deleting.
+        </p>
+      </div>
+
+      {/* Add tag input */}
+      <div style={{ marginBottom: 28 }}>
+        <p style={{ fontSize: 11, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 10px" }}>Add a new interest</p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addTag()}
+            placeholder="e.g. Egypt grocery delivery, Noon logistics..."
+            style={{
+              flex: 1, padding: "10px 14px", borderRadius: 10,
+              border: `1px solid ${C.border}`, fontSize: 14,
+              fontFamily: "'DM Sans', sans-serif", color: C.dark,
+              outline: "none", background: C.surface,
+            }}
+            onFocus={e => { e.target.style.borderColor = C.dark; }}
+            onBlur={e => { e.target.style.borderColor = C.border; }}
+          />
+          <button onClick={addTag} style={{
+            padding: "10px 20px", borderRadius: 10, border: "none",
+            background: C.dark, color: "#f8fafc", fontSize: 14,
+            fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+            transition: "opacity 0.15s",
+          }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+          >
+            + Add
+          </button>
+        </div>
+        <p style={{ fontSize: 11, color: C.subtle, fontFamily: "'DM Mono', monospace", margin: "6px 0 0" }}>Press Enter or click Add</p>
+      </div>
+
+      {/* Tag priority list */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <p style={{ fontSize: 11, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>
+            Priority order — top ranks highest
+          </p>
+          <span style={{ fontSize: 11, color: C.subtle, fontFamily: "'DM Mono', monospace" }}>{tags.filter(t => t.active).length} active</span>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {tags.map((tag, idx) => (
+            <div key={tag.id} style={{
+              display: "flex", alignItems: "center", gap: 12,
+              padding: "12px 16px", borderRadius: 12,
+              border: `1px solid ${tag.active ? "#bfdbfe" : C.border}`,
+              background: tag.active ? "#eff6ff" : C.faint,
+              transition: "all 0.2s",
+              opacity: tag.active ? 1 : 0.5,
+            }}>
+              {/* Priority number */}
+              <span style={{
+                fontSize: 12, fontWeight: 700, fontFamily: "'DM Mono', monospace",
+                color: tag.active ? "#1d4ed8" : C.subtle,
+                width: 20, textAlign: "center", flexShrink: 0,
+              }}>{idx + 1}</span>
+
+              {/* Label */}
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: tag.active ? C.dark : C.muted, fontFamily: "'DM Sans', sans-serif" }}>
+                {tag.label}
+              </span>
+
+              {/* Controls */}
+              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <button onClick={() => moveTag(tag.id, "up")} style={{ background: "none", border: "none", cursor: "pointer", color: C.subtle, fontSize: 14, padding: "2px 4px" }} title="Move up">↑</button>
+                <button onClick={() => moveTag(tag.id, "down")} style={{ background: "none", border: "none", cursor: "pointer", color: C.subtle, fontSize: 14, padding: "2px 4px" }} title="Move down">↓</button>
+
+                {/* Toggle */}
+                <button onClick={() => toggleTag(tag.id)} style={{
+                  padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                  cursor: "pointer", fontFamily: "'DM Mono', monospace", transition: "all 0.15s",
+                  border: `1px solid ${tag.active ? "#93c5fd" : C.border}`,
+                  background: tag.active ? "#dbeafe" : C.surface,
+                  color: tag.active ? "#1d4ed8" : C.subtle,
+                }}>
+                  {tag.active ? "Active" : "Paused"}
+                </button>
+
+                <button onClick={() => removeTag(tag.id)} style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  color: "#fca5a5", fontSize: 16, padding: "2px 4px",
+                  transition: "color 0.15s",
+                }}
+                  onMouseEnter={e => e.currentTarget.style.color = C.red}
+                  onMouseLeave={e => e.currentTarget.style.color = "#fca5a5"}
+                  title="Remove">×</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* How it works */}
+      <div style={{ background: C.faint, borderRadius: 12, padding: "18px 20px", border: `1px solid ${C.border}` }}>
+        <p style={{ fontSize: 11, color: C.subtle, fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 10px" }}>How this influences your feed</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[
+            { rank: "1st", label: "Interest profile (this page)", desc: "Active tags, in priority order — always ranks highest" },
+            { rank: "2nd", label: "Bookmark behaviour", desc: "What you save teaches the app your implicit preferences" },
+            { rank: "3rd", label: "Editorial baseline", desc: "Source tier + corroboration — non-negotiable floor" },
+          ].map(row => (
+            <div key={row.rank} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: "#1d4ed8", width: 28, flexShrink: 0 }}>{row.rank}</span>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.dark, fontFamily: "'DM Sans', sans-serif" }}>{row.label} </span>
+                <span style={{ fontSize: 13, color: C.muted, fontFamily: "'Georgia', serif" }}>— {row.desc}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+export default function App() {
+  const [activeTab, setActiveTab] = useState("today");
+  const [tags, setTags] = useState(INITIAL_TAGS);
+  const [bookmarks, setBookmarks] = useState([1]);
+  const [competitor, setCompetitor] = useState("All");
+  const [competitors, setCompetitors] = useState(SEED_COMPETITORS);
+
+  const toggleBookmark = (id) => setBookmarks(prev => prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]);
+
+  const tabs = [
+    { id: "today", label: "Today" },
+    { id: "trends", label: "Trends" },
+    { id: "saved", label: `Saved${bookmarks.length > 0 ? ` (${bookmarks.length})` : ""}` },
+    { id: "settings", label: "⚙ Profile" },
+  ];
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans', sans-serif" }}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+      {/* Nav */}
+      <div style={{
+        position: "sticky", top: 0, zIndex: 10,
+        background: "rgba(248,250,252,0.96)", backdropFilter: "blur(8px)",
+        borderBottom: `1px solid ${C.border}`, padding: "0 24px",
+        display: "flex", alignItems: "center", gap: 4,
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: C.dark, fontFamily: "'DM Sans', sans-serif", marginRight: 16, padding: "14px 0", letterSpacing: "-0.02em" }}>
+          MENA<span style={{ color: "#3b82f6" }}>intel</span>
+        </span>
+        {tabs.map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+            padding: "14px 16px", border: "none", background: "none",
+            fontSize: 13, fontWeight: activeTab === tab.id ? 700 : 500,
+            color: activeTab === tab.id ? C.dark : C.muted,
+            cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+            borderBottom: activeTab === tab.id ? `2px solid ${C.dark}` : "2px solid transparent",
+            transition: "all 0.15s",
+          }}>{tab.label}</button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div style={{ padding: "32px 24px 60px" }}>
+        {activeTab === "today" && <TodayTab tags={tags} bookmarks={bookmarks} onBookmark={toggleBookmark} competitor={competitor} setCompetitor={setCompetitor} competitors={competitors} setActiveTab={setActiveTab} />}
+        {activeTab === "trends" && <TrendsTab competitor={competitor} setCompetitor={setCompetitor} competitors={competitors} />}
+        {activeTab === "saved" && <SavedTab bookmarks={bookmarks} tags={tags} />}
+        {activeTab === "settings" && <SettingsTab tags={tags} setTags={setTags} />}
+      </div>
+    </div>
+  );
+}
