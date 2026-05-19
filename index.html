@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MENAintel</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.9/babel.min.js"></script>
+  <script src="data.js"></script>
+  <style>* { box-sizing: border-box; margin: 0; padding: 0; } body { background: #f8fafc; }</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+const { useState } = React;
+
+const TierBadge = ({tier}) => (
+  React.createElement('span', {style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",padding:"2px 6px",borderRadius:4,background:tier===1?"#dcfce7":"#fef9c3",color:tier===1?C.green:C.amber,textTransform:"uppercase"}}, "T"+tier)
+);
+
+const SourceChip = ({source}) => (
+  React.createElement('a', {href:source.url,target:"_blank",rel:"noopener noreferrer",
+    style:{display:"inline-flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:20,border:"1px solid "+C.border,background:C.faint,fontSize:12,color:"#334155",textDecoration:"none",fontFamily:"'DM Mono',monospace",cursor:"pointer"},
+    onMouseEnter:e=>{e.currentTarget.style.background=C.dark;e.currentTarget.style.color="#f8fafc";e.currentTarget.style.borderColor=C.dark;},
+    onMouseLeave:e=>{e.currentTarget.style.background=C.faint;e.currentTarget.style.color="#334155";e.currentTarget.style.borderColor=C.border;}},
+    React.createElement(TierBadge,{tier:source.tier}),
+    source.paywall ? " 🔒 " : " ",
+    source.name, " ",
+    React.createElement('span',{style:{opacity:0.45}},source.date), " ",
+    React.createElement('span',{style:{fontSize:10,opacity:0.4}},"↗")
+  )
+);
+
+const CategoryTag = ({category,color}) => (
+  React.createElement('span',{style:{fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color,borderLeft:"3px solid "+color,paddingLeft:8}},category)
+);
+
+const ExecSummary = ({competitor, filteredInsights}) => {
+  const corroborated = filteredInsights.filter(i=>i.corroborated).length;
+  const total = filteredInsights.length;
+  const stats = competitor === "All"
+    ? [{label:"Stories",value:"21"},{label:"Corroborated",value:"8 / 21"},{label:"Talabat Q1 GMV",value:"$2.7B"},{label:"Markets",value:"UAE · KSA · EGY · TR · ZA"}]
+    : [{label:"Stories",value:String(total)},{label:"Corroborated",value:corroborated+" / "+total},{label:"Viewing",value:competitor}];
+
+  const summaryText = competitor === "All"
+    ? "Talabat dominates the week across two fronts: Q1 2026 results (12 May) beat guidance with GMV up 18% to $2.7B and raised full-year net income guidance to $300-330M, while its Cairo hub — MENA's largest at 27,000 sqm — became operational 28 April, processing up to 1 million items daily across 12 Egyptian cities. Three IPO stories converge: Noon confirmed its dual UAE-Saudi listing within 24 months at ~$10B valuation; Ninja is lining up Goldman Sachs and Citi for a $1B Tadawul debut; Careem is approaching IPO-readiness after its first profitable year."
+    : competitor + " appears in " + total + " stor" + (total!==1?"ies":"y") + " today" + (corroborated>0?", of which "+corroborated+" "+(corroborated===1?"is":"are")+" fully corroborated":"")+". "+filteredInsights.slice(0,2).map(i=>i.headline).join(". ");
+
+  return React.createElement('div',{style:{background:"linear-gradient(135deg,"+C.dark+" 0%,"+C.darkMid+" 100%)",borderRadius:14,padding:"24px 28px",marginBottom:24}},
+    React.createElement('p',{style:{fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"#475569",fontFamily:"'DM Mono',monospace",margin:"0 0 14px"}},
+      (competitor==="All"?"Executive Summary":"Summary · "+competitor)+" · 9–16 May 2026"),
+    React.createElement('p',{style:{fontSize:15,lineHeight:1.85,margin:"0 0 14px",fontFamily:"'Georgia',serif",color:"#cbd5e1"}},summaryText),
+    competitor==="All" && React.createElement('p',{style:{fontSize:14,lineHeight:1.8,margin:0,fontFamily:"'Georgia',serif",color:"#64748b",fontStyle:"italic"}},
+      "⚠ Monitoring: Alshaya Group's regulatory push against Shein/Temu — watch for GCC government response in H2 2026."),
+    React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:24,marginTop:20,paddingTop:16,borderTop:"1px solid rgba(255,255,255,0.07)"}},
+      stats.map(s=>React.createElement('div',{key:s.label},
+        React.createElement('div',{style:{fontSize:18,fontWeight:700,color:"#f8fafc",fontFamily:"'DM Sans',sans-serif"}},s.value),
+        React.createElement('div',{style:{fontSize:10,color:"#475569",fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.06em",marginTop:2}},s.label)
+      ))
+    )
+  );
+};
+
+function TodayTab({tags,bookmarks,onBookmark,competitor,setCompetitor,setActiveTab}) {
+  const [expanded,setExpanded] = useState(null);
+  const [showAll,setShowAll] = useState(false);
+  const activeTags = tags.filter(t=>t.active).map(t=>t.label);
+  const filteredInsights = INSIGHTS.filter(i=>competitor==="All"||i.competitor===competitor);
+
+  return React.createElement('div',{style:{maxWidth:720,margin:"0 auto"}},
+    React.createElement('div',{style:{marginBottom:28}},
+      React.createElement('p',{style:{fontSize:11,letterSpacing:"0.12em",textTransform:"uppercase",color:C.subtle,fontFamily:"'DM Mono',monospace",margin:"0 0 6px"}},"MENA E-Commerce Intelligence · 9–16 May 2026"),
+      React.createElement('h1',{style:{fontSize:26,fontWeight:700,color:C.dark,margin:"0 0 16px",fontFamily:"'DM Sans',sans-serif"}},"Last 7 Days"),
+      React.createElement('div',{style:{marginBottom:16}},
+        React.createElement('span',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",display:"block",marginBottom:8}},"Filter by company"),
+        React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6}},
+          COMPETITORS.map(c=>React.createElement('button',{key:c,onClick:()=>setCompetitor(c),style:{padding:"4px 12px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Mono',monospace",border:competitor===c?"none":"1px solid "+C.border,background:competitor===c?C.dark:C.surface,color:competitor===c?"#f8fafc":C.muted}},c))
+        )
+      ),
+      React.createElement('div',{style:{marginBottom:20}},
+        React.createElement('div',{style:{display:"inline-flex",borderRadius:10,overflow:"hidden",border:"1px solid "+C.border,marginBottom:showAll?0:12}},
+          React.createElement('button',{onClick:()=>setShowAll(true),style:{padding:"7px 18px",border:"none",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",background:showAll?C.dark:C.surface,color:showAll?"#f8fafc":C.muted}},"All news"),
+          React.createElement('button',{onClick:()=>setShowAll(false),style:{padding:"7px 18px",border:"none",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",background:!showAll?"#1d4ed8":C.surface,color:!showAll?"#f8fafc":C.muted,borderLeft:"1px solid "+C.border}},"Priority news")
+        ),
+        !showAll && activeTags.length>0 && React.createElement('div',{style:{padding:"12px 14px",borderRadius:10,background:"#eff6ff",border:"1px solid #bfdbfe"}},
+          React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:8}},
+            React.createElement('span',{style:{fontSize:10,color:"#1d4ed8",fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em"}},"Your focus areas:"),
+            activeTags.map(t=>React.createElement('span',{key:t,style:{fontSize:11,padding:"3px 10px",borderRadius:20,background:"#fff",color:"#1d4ed8",border:"1px solid #bfdbfe",fontFamily:"'DM Mono',monospace"}},t))
+          ),
+          React.createElement('p',{style:{fontSize:11,color:"#3b82f6",fontFamily:"'Georgia',serif",fontStyle:"italic",margin:0,lineHeight:1.6}},
+            "Stories ranked by your focus areas, boosted by saves. Everything corroborated appears — focus areas determine order. ",
+            React.createElement('span',{style:{color:"#1d4ed8",cursor:"pointer",textDecoration:"underline",fontStyle:"normal",fontFamily:"'DM Mono',monospace",fontSize:10},onClick:()=>setActiveTab("settings")},"Edit →")
+          )
+        ),
+        showAll && React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'Georgia',serif",fontStyle:"italic",margin:"8px 0 0"}},"Showing all corroborated stories in chronological order — focus areas bypassed.")
+      ),
+      React.createElement(ExecSummary,{competitor,filteredInsights})
+    ),
+    React.createElement('p',{style:{fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:C.subtle,fontFamily:"'DM Mono',monospace",marginBottom:12}},
+      showAll?"All stories — chronological":"Insights — ranked by focus areas",
+      competitor!=="All" && React.createElement('span',{style:{color:C.dark,fontWeight:700}}," · "+competitor)
+    ),
+    filteredInsights.length===0
+      ? React.createElement('div',{style:{background:C.surface,border:"1px solid "+C.border,borderRadius:12,padding:28,textAlign:"center"}},
+          React.createElement('p',{style:{fontSize:14,color:C.muted,fontFamily:"'DM Sans',sans-serif"}},"No stories today for "+competitor+"."))
+      : React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:10}},
+          filteredInsights.map(insight=>{
+            const saved=bookmarks.includes(insight.id);
+            return React.createElement('div',{key:insight.id,style:{border:"1px solid "+C.border,borderRadius:12,overflow:"hidden",background:C.surface,boxShadow:"0 1px 3px rgba(0,0,0,0.05)"}},
+              React.createElement('div',{style:{padding:"14px 18px",borderLeft:"4px solid "+insight.categoryColor,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12},onClick:()=>setExpanded(expanded===insight.id?null:insight.id)},
+                React.createElement('div',{style:{flex:1}},
+                  React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10,marginBottom:6}},
+                    React.createElement(CategoryTag,{category:insight.category,color:insight.categoryColor}),
+                    React.createElement('span',{style:{fontSize:10,fontFamily:"'DM Mono',monospace",color:C.subtle}},insight.relevanceScore+"% match"),
+                    insight.competitor && React.createElement('span',{style:{fontSize:10,padding:"1px 7px",borderRadius:10,background:C.faint,color:C.muted,border:"1px solid "+C.border,fontFamily:"'DM Mono',monospace"}},insight.competitor)
+                  ),
+                  React.createElement('p',{style:{margin:0,fontSize:14,fontWeight:600,color:C.dark,fontFamily:"'DM Sans',sans-serif",lineHeight:1.4}},insight.headline)
+                ),
+                React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
+                  !insight.corroborated && React.createElement('span',{style:{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:20,background:"#fff7ed",color:C.orange,border:"1px solid #fed7aa"}},"!"),
+                  React.createElement('button',{onClick:e=>{e.stopPropagation();onBookmark(insight.id);},style:{background:"none",border:"none",cursor:"pointer",fontSize:16,color:saved?"#f59e0b":C.border,padding:2}},saved?"★":"☆"),
+                  React.createElement('span',{style:{color:C.border,fontSize:16,display:"inline-block",transform:expanded===insight.id?"rotate(180deg)":"none",transition:"transform 0.2s"}},"⌄")
+                )
+              ),
+              expanded===insight.id && React.createElement('div',{style:{padding:"16px 18px 18px",borderTop:"1px solid "+C.faint,background:"#fafafa"}},
+                React.createElement('p',{style:{fontSize:14,lineHeight:1.8,color:"#334155",margin:"0 0 14px",fontFamily:"'Georgia',serif"}},insight.synthesis),
+                React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6}},
+                  insight.sources.map((s,i)=>React.createElement(SourceChip,{key:i,source:s}))
+                )
+              )
+            );
+          })
+        )
+  );
+}
+
+function TrendsTab({competitor,setCompetitor}) {
+  const [horizon,setHorizon] = useState("monthly");
+  const [market,setMarket] = useState("all");
+  const [customDate,setCustomDate] = useState(false);
+  const [dateFrom,setDateFrom] = useState("2026-04-01");
+  const [dateTo,setDateTo] = useState("2026-05-16");
+
+  const data = TRENDS[horizon];
+  const filteredInsights = data.insights.filter(ins=>{
+    const mObj = MARKETS_LIST.find(m=>m.id===market);
+    const marketOk = market==="all"||(mObj&&mObj.markets?ins.markets.some(m=>mObj.markets.includes(m)):true);
+    const compOk = competitor==="All"||ins.competitor===competitor;
+    return marketOk&&compOk;
+  });
+
+  const FilterBtn = ({h}) => React.createElement('button',{onClick:()=>{setHorizon(h);setCustomDate(false);},style:{padding:"5px 12px",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",border:horizon===h&&!customDate?"none":"1px solid "+C.border,background:horizon===h&&!customDate?C.dark:C.surface,color:horizon===h&&!customDate?"#f8fafc":C.muted}},h.charAt(0).toUpperCase()+h.slice(1));
+
+  return React.createElement('div',{style:{maxWidth:720,margin:"0 auto"}},
+    React.createElement('div',{style:{marginBottom:20}},
+      React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 4px"}},"Strategic Intelligence"),
+      React.createElement('h2',{style:{fontSize:22,fontWeight:700,color:C.dark,margin:"0 0 6px",fontFamily:"'DM Sans',sans-serif"}},"Trends Roundup"),
+      React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6}},
+        React.createElement('span',{style:{fontSize:12,color:C.subtle,fontFamily:"'DM Mono',monospace"}},"⏱ "+data.readMins+" min read"),
+        React.createElement('span',{style:{color:C.border}}," · "),
+        React.createElement('span',{style:{fontSize:12,color:C.subtle,fontFamily:"'DM Mono',monospace"}},data.storiesAnalysed+" stories analysed")
+      )
+    ),
+    React.createElement('div',{style:{background:C.surface,border:"1px solid "+C.border,borderRadius:12,padding:"16px 18px",marginBottom:20}},
+      React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 12px"}},"Filters"),
+      React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:16}},
+        React.createElement('div',null,
+          React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",margin:"0 0 6px"}},"Time horizon"),
+          React.createElement('div',{style:{display:"flex",gap:4}},
+            React.createElement(FilterBtn,{h:"weekly"}),
+            React.createElement(FilterBtn,{h:"monthly"}),
+            React.createElement(FilterBtn,{h:"quarterly"}),
+            React.createElement('button',{onClick:()=>setCustomDate(!customDate),style:{padding:"5px 12px",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",border:customDate?"none":"1px solid "+C.border,background:customDate?"#7c3aed":C.surface,color:customDate?"#f8fafc":C.muted}},"Custom")
+          )
+        ),
+        React.createElement('div',null,
+          React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",margin:"0 0 6px"}},"Market"),
+          React.createElement('select',{value:market,onChange:e=>setMarket(e.target.value),style:{padding:"5px 10px",borderRadius:6,fontSize:12,fontFamily:"'DM Sans',sans-serif",border:"1px solid "+C.border,background:C.surface,color:C.dark,outline:"none"}},
+            MARKETS_LIST.map(m=>React.createElement('option',{key:m.id,value:m.id},m.label))
+          )
+        ),
+        React.createElement('div',null,
+          React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",margin:"0 0 6px"}},"Company"),
+          React.createElement('select',{value:competitor,onChange:e=>setCompetitor(e.target.value),style:{padding:"5px 10px",borderRadius:6,fontSize:12,fontFamily:"'DM Sans',sans-serif",border:"1px solid "+C.border,background:C.surface,color:C.dark,outline:"none"}},
+            COMPETITORS.map(c=>React.createElement('option',{key:c,value:c},c))
+          )
+        )
+      ),
+      customDate && React.createElement('div',{style:{display:"flex",gap:10,alignItems:"center",marginTop:12,paddingTop:12,borderTop:"1px solid "+C.border}},
+        React.createElement('div',null,React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",margin:"0 0 4px"}},"From"),React.createElement('input',{type:"date",value:dateFrom,onChange:e=>setDateFrom(e.target.value),style:{padding:"5px 10px",borderRadius:6,fontSize:12,border:"1px solid "+C.border,outline:"none"}})),
+        React.createElement('div',null,React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",margin:"0 0 4px"}},"To"),React.createElement('input',{type:"date",value:dateTo,onChange:e=>setDateTo(e.target.value),style:{padding:"5px 10px",borderRadius:6,fontSize:12,border:"1px solid "+C.border,outline:"none"}}))
+      )
+    ),
+    React.createElement('div',{style:{background:"linear-gradient(135deg,"+C.dark+" 0%,"+C.darkMid+" 100%)",borderRadius:14,padding:"22px 26px",marginBottom:28}},
+      React.createElement('p',{style:{fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"#475569",fontFamily:"'DM Mono',monospace",margin:"0 0 12px"}},horizon.charAt(0).toUpperCase()+horizon.slice(1)+" Summary · "+(customDate?dateFrom+" to "+dateTo:data.period)),
+      React.createElement('p',{style:{fontSize:15,lineHeight:1.85,margin:0,fontFamily:"'Georgia',serif",color:"#cbd5e1"}},data.summary)
+    ),
+    filteredInsights.length===0
+      ? React.createElement('div',{style:{background:C.surface,border:"1px solid "+C.border,borderRadius:12,padding:28,textAlign:"center"}},React.createElement('p',{style:{fontSize:14,color:C.muted,fontFamily:"'DM Sans',sans-serif"}},"No insights match your current filters. Try broadening the selection."))
+      : React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:24}},
+          filteredInsights.map(insight=>React.createElement('div',{key:insight.id,style:{border:"1px solid "+C.border,borderRadius:14,overflow:"hidden",background:C.surface,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}},
+            React.createElement('div',{style:{padding:"18px 22px 16px",borderLeft:"5px solid "+insight.categoryColor,borderBottom:"1px solid "+C.faint}},
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}},
+                React.createElement(CategoryTag,{category:insight.category,color:insight.categoryColor}),
+                insight.markets.map(m=>React.createElement('span',{key:m,style:{fontSize:10,padding:"1px 6px",borderRadius:4,background:"#f0fdf4",color:"#15803d",border:"1px solid #bbf7d0",fontFamily:"'DM Mono',monospace"}},m)),
+                !insight.corroborated && React.createElement('span',{style:{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,background:"#fff7ed",color:C.orange,border:"1px solid #fed7aa"}},"⚠ Single source")
+              ),
+              React.createElement('h3',{style:{margin:0,fontSize:17,fontWeight:700,color:C.dark,fontFamily:"'DM Sans',sans-serif",lineHeight:1.35}},insight.headline)
+            ),
+            React.createElement('div',{style:{padding:"0 22px 22px"}},
+              insight.sections.map((sec,si)=>React.createElement('div',{key:si,style:{marginTop:22}},
+                React.createElement('p',{style:{fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:insight.categoryColor,fontFamily:"'DM Mono',monospace",margin:"0 0 8px"}},sec.theme),
+                React.createElement('p',{style:{fontSize:14,lineHeight:1.85,color:"#334155",margin:0,fontFamily:"'Georgia',serif"}},sec.body)
+              )),
+              React.createElement('div',{style:{marginTop:22,paddingTop:16,borderTop:"1px solid "+C.faint}},
+                React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 8px"}},"Sources"),
+                React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6}},
+                  insight.sources.map((s,i)=>React.createElement(SourceChip,{key:i,source:s}))
+                )
+              )
+            )
+          ))
+        )
+  );
+}
+
+function SavedTab({bookmarks,tags}) {
+  const savedInsights = INSIGHTS.filter(i=>bookmarks.includes(i.id));
+  const tagFreq = {};
+  savedInsights.forEach(i=>{if(i.competitor){tagFreq[i.competitor]=(tagFreq[i.competitor]||0)+1;}});
+  const total = Object.values(tagFreq).reduce((a,b)=>a+b,0)||1;
+
+  return React.createElement('div',{style:{maxWidth:720,margin:"0 auto"}},
+    React.createElement('div',{style:{marginBottom:24}},
+      React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 4px"}},"Your Library"),
+      React.createElement('h2',{style:{fontSize:22,fontWeight:700,color:C.dark,margin:0,fontFamily:"'DM Sans',sans-serif"}},"Saved Articles")
+    ),
+    savedInsights.length>0 && React.createElement('div',{style:{background:"linear-gradient(135deg,"+C.dark+" 0%,"+C.darkMid+" 100%)",borderRadius:14,padding:"22px 26px",marginBottom:24}},
+      React.createElement('p',{style:{fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"#475569",fontFamily:"'DM Mono',monospace",margin:"0 0 12px"}},"What the app has learned from your saves"),
+      React.createElement('p',{style:{fontSize:14,lineHeight:1.75,color:"#cbd5e1",fontFamily:"'Georgia',serif",margin:"0 0 18px"}},"Based on "+savedInsights.length+" saved article"+(savedInsights.length!==1?"s":"")+", you are tracking: "+Object.entries(tagFreq).map(([k,v])=>k+" ("+Math.round(v/total*100)+"%)").join(", ")+"."),
+      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},
+        Object.entries(tagFreq).map(([tag,count])=>React.createElement('div',{key:tag,style:{display:"flex",alignItems:"center",gap:12}},
+          React.createElement('span',{style:{fontSize:11,color:"#94a3b8",fontFamily:"'DM Mono',monospace",width:120,flexShrink:0}},tag),
+          React.createElement('div',{style:{flex:1,height:6,background:"rgba(255,255,255,0.08)",borderRadius:3,overflow:"hidden"}},React.createElement('div',{style:{width:(count/total*100)+"%",height:"100%",background:"#3b82f6",borderRadius:3}})),
+          React.createElement('span',{style:{fontSize:11,color:"#64748b",fontFamily:"'DM Mono',monospace",width:32,textAlign:"right"}},Math.round(count/total*100)+"%")
+        ))
+      )
+    ),
+    savedInsights.length===0
+      ? React.createElement('div',{style:{background:C.surface,border:"1px solid "+C.border,borderRadius:12,padding:28,textAlign:"center"}},React.createElement('p',{style:{fontSize:14,color:C.muted,fontFamily:"'DM Sans',sans-serif"}},"No saved articles yet. Star stories on the Today tab to save them here."))
+      : React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},
+          savedInsights.map(article=>React.createElement('div',{key:article.id,style:{border:"1px solid "+C.border,borderRadius:12,padding:"14px 18px",background:C.surface,display:"flex",alignItems:"flex-start",gap:14}},
+            React.createElement('div',{style:{flex:1}},
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},React.createElement(CategoryTag,{category:article.category,color:article.categoryColor})),
+              React.createElement('p',{style:{margin:"0 0 8px",fontSize:14,fontWeight:600,color:C.dark,fontFamily:"'DM Sans',sans-serif",lineHeight:1.4}},article.headline),
+              React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6}},article.sources.slice(0,1).map((s,i)=>React.createElement(SourceChip,{key:i,source:s})))
+            ),
+            React.createElement('span',{style:{color:"#f59e0b",fontSize:18,flexShrink:0}},"★")
+          ))
+        )
+  );
+}
+
+function SettingsTab({tags,setTags}) {
+  const [input,setInput] = useState("");
+  const addTag = () => {
+    const t=input.trim();
+    if(!t||tags.find(x=>x.label.toLowerCase()===t.toLowerCase()))return;
+    setTags([...tags,{id:Date.now(),label:t,active:true,priority:tags.length+1}]);
+    setInput("");
+  };
+  const removeTag = id=>setTags(tags.filter(t=>t.id!==id));
+  const toggleTag = id=>setTags(tags.map(t=>t.id===id?{...t,active:!t.active}:t));
+  const moveTag = (id,dir)=>{
+    const idx=tags.findIndex(t=>t.id===id);
+    if(dir==="up"&&idx===0)return;
+    if(dir==="down"&&idx===tags.length-1)return;
+    const n=[...tags];const sw=dir==="up"?idx-1:idx+1;
+    [n[idx],n[sw]]=[n[sw],n[idx]];
+    setTags(n.map((t,i)=>({...t,priority:i+1})));
+  };
+
+  return React.createElement('div',{style:{maxWidth:720,margin:"0 auto"}},
+    React.createElement('div',{style:{marginBottom:28}},
+      React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 4px"}},"Personalisation"),
+      React.createElement('h2',{style:{fontSize:22,fontWeight:700,color:C.dark,margin:"0 0 8px",fontFamily:"'DM Sans',sans-serif"}},"Interest Profile"),
+      React.createElement('p',{style:{fontSize:14,color:C.muted,margin:0,fontFamily:"'Georgia',serif",lineHeight:1.6}},"These tags tell the app what to surface first. Higher priority = ranked first in your daily feed.")
+    ),
+    React.createElement('div',{style:{marginBottom:28}},
+      React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 10px"}},"Add a new focus area"),
+      React.createElement('div',{style:{display:"flex",gap:8}},
+        React.createElement('input',{value:input,onChange:e=>setInput(e.target.value),onKeyDown:e=>e.key==="Enter"&&addTag(),placeholder:"e.g. Egypt grocery delivery, Noon logistics...",style:{flex:1,padding:"10px 14px",borderRadius:10,border:"1px solid "+C.border,fontSize:14,fontFamily:"'DM Sans',sans-serif",color:C.dark,outline:"none"}}),
+        React.createElement('button',{onClick:addTag,style:{padding:"10px 20px",borderRadius:10,border:"none",background:C.dark,color:"#f8fafc",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},"+ Add")
+      )
+    ),
+    React.createElement('div',{style:{marginBottom:28}},
+      React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
+        React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:0}},"Priority order"),
+        React.createElement('span',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace"}},tags.filter(t=>t.active).length+" active")
+      ),
+      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},
+        tags.map((tag,idx)=>React.createElement('div',{key:tag.id,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderRadius:12,border:"1px solid "+(tag.active?"#bfdbfe":C.border),background:tag.active?"#eff6ff":C.faint,opacity:tag.active?1:0.5}},
+          React.createElement('span',{style:{fontSize:12,fontWeight:700,fontFamily:"'DM Mono',monospace",color:tag.active?"#1d4ed8":C.subtle,width:20,textAlign:"center",flexShrink:0}},idx+1),
+          React.createElement('span',{style:{flex:1,fontSize:14,fontWeight:500,color:tag.active?C.dark:C.muted,fontFamily:"'DM Sans',sans-serif"}},tag.label),
+          React.createElement('div',{style:{display:"flex",gap:4,alignItems:"center"}},
+            React.createElement('button',{onClick:()=>moveTag(tag.id,"up"),style:{background:"none",border:"none",cursor:"pointer",color:C.subtle,fontSize:14,padding:"2px 4px"}},"↑"),
+            React.createElement('button',{onClick:()=>moveTag(tag.id,"down"),style:{background:"none",border:"none",cursor:"pointer",color:C.subtle,fontSize:14,padding:"2px 4px"}},"↓"),
+            React.createElement('button',{onClick:()=>toggleTag(tag.id),style:{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'DM Mono',monospace",border:"1px solid "+(tag.active?"#93c5fd":C.border),background:tag.active?"#dbeafe":C.surface,color:tag.active?"#1d4ed8":C.subtle}},tag.active?"Active":"Paused"),
+            React.createElement('button',{onClick:()=>removeTag(tag.id),style:{background:"none",border:"none",cursor:"pointer",color:"#fca5a5",fontSize:16,padding:"2px 4px"}},"×")
+          )
+        ))
+      )
+    ),
+    React.createElement('div',{style:{background:C.faint,borderRadius:12,padding:"18px 20px",border:"1px solid "+C.border}},
+      React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 10px"}},"How this influences your feed"),
+      [{rank:"1st",label:"Interest profile",desc:"Active tags, in priority order — always ranks highest"},
+       {rank:"2nd",label:"Bookmark behaviour",desc:"What you save teaches the app your implicit preferences"},
+       {rank:"3rd",label:"Editorial baseline",desc:"Source tier + corroboration — non-negotiable floor"}].map(row=>
+        React.createElement('div',{key:row.rank,style:{display:"flex",gap:12,alignItems:"flex-start",marginBottom:8}},
+          React.createElement('span',{style:{fontSize:11,fontWeight:700,fontFamily:"'DM Mono',monospace",color:"#1d4ed8",width:28,flexShrink:0}},row.rank),
+          React.createElement('div',null,
+            React.createElement('span',{style:{fontSize:13,fontWeight:600,color:C.dark,fontFamily:"'DM Sans',sans-serif"}},row.label+" "),
+            React.createElement('span',{style:{fontSize:13,color:C.muted,fontFamily:"'Georgia',serif"}},"— "+row.desc)
+          )
+        )
+      )
+    )
+  );
+}
+
+function App() {
+  const [activeTab,setActiveTab] = useState("today");
+  const [tags,setTags] = useState(INITIAL_TAGS);
+  const [bookmarks,setBookmarks] = useState([]);
+  const [todayCompetitor,setTodayCompetitor] = useState("All");
+  const [trendsCompetitor,setTrendsCompetitor] = useState("All");
+  const toggleBookmark = id=>setBookmarks(prev=>prev.includes(id)?prev.filter(b=>b!==id):[...prev,id]);
+  const tabs = [{id:"today",label:"Today"},{id:"trends",label:"Trends"},{id:"saved",label:"Saved"+(bookmarks.length>0?" ("+bookmarks.length+")":"")},{id:"settings",label:"⚙ Profile"}];
+
+  return React.createElement('div',{style:{minHeight:"100vh",background:C.bg,fontFamily:"'DM Sans',sans-serif"}},
+    React.createElement('div',{style:{position:"sticky",top:0,zIndex:10,background:"rgba(248,250,252,0.96)",backdropFilter:"blur(8px)",borderBottom:"1px solid "+C.border,padding:"0 24px",display:"flex",alignItems:"center",gap:4}},
+      React.createElement('span',{style:{fontSize:13,fontWeight:700,color:C.dark,fontFamily:"'DM Sans',sans-serif",marginRight:16,padding:"14px 0",letterSpacing:"-0.02em"}},"MENA",React.createElement('span',{style:{color:"#3b82f6"}},"intel")),
+      tabs.map(tab=>React.createElement('button',{key:tab.id,onClick:()=>setActiveTab(tab.id),style:{padding:"14px 16px",border:"none",background:"none",fontSize:13,fontWeight:activeTab===tab.id?700:500,color:activeTab===tab.id?C.dark:C.muted,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",borderBottom:activeTab===tab.id?"2px solid "+C.dark:"2px solid transparent",transition:"all 0.15s"}},tab.label))
+    ),
+    React.createElement('div',{style:{padding:"32px 24px 60px"}},
+      activeTab==="today" && React.createElement(TodayTab,{tags,bookmarks,onBookmark:toggleBookmark,competitor:todayCompetitor,setCompetitor:setTodayCompetitor,setActiveTab}),
+      activeTab==="trends" && React.createElement(TrendsTab,{competitor:trendsCompetitor,setCompetitor:setTrendsCompetitor}),
+      activeTab==="saved" && React.createElement(SavedTab,{bookmarks,tags}),
+      activeTab==="settings" && React.createElement(SettingsTab,{tags,setTags})
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+  </script>
+</body>
+</html>
