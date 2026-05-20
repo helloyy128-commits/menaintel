@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MENAintel</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.9/babel.min.js"></script>
+  <script src="data.js"></script>
+  <style>* { box-sizing: border-box; margin: 0; padding: 0; } body { background: #f8fafc; }</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+const { useState } = React;
+
+const TierBadge = ({tier}) => (
+  React.createElement('span', {style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",padding:"2px 6px",borderRadius:4,background:tier===1?"#dcfce7":"#fef9c3",color:tier===1?C.green:C.amber,textTransform:"uppercase"}}, "T"+tier)
+);
+
+const SourceChip = ({source}) => (
+  React.createElement('a', {href:source.url,target:"_blank",rel:"noopener noreferrer",
+    style:{display:"inline-flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:20,border:"1px solid "+C.border,background:C.faint,fontSize:12,color:"#334155",textDecoration:"none",fontFamily:"'DM Mono',monospace",cursor:"pointer"},
+    onMouseEnter:e=>{e.currentTarget.style.background=C.dark;e.currentTarget.style.color="#f8fafc";e.currentTarget.style.borderColor=C.dark;},
+    onMouseLeave:e=>{e.currentTarget.style.background=C.faint;e.currentTarget.style.color="#334155";e.currentTarget.style.borderColor=C.border;}},
+    React.createElement(TierBadge,{tier:source.tier}),
+    source.paywall ? " 🔒 " : " ",
+    source.name, " ",
+    React.createElement('span',{style:{opacity:0.45}},source.date), " ",
+    React.createElement('span',{style:{fontSize:10,opacity:0.4}},"↗")
+  )
+);
+
+const CategoryTag = ({category,color}) => (
+  React.createElement('span',{style:{fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color,borderLeft:"3px solid "+color,paddingLeft:8}},category)
+);
+
+const ExecSummary = ({competitor, filteredInsights}) => {
+  const corroborated = filteredInsights.filter(i=>i.corroborated).length;
+  const total = filteredInsights.length;
+  const stats = competitor === "All"
+    ? [{label:"Stories",value:"21"},{label:"Corroborated",value:"8 / 21"},{label:"Talabat Q1 GMV",value:"$2.7B"},{label:"Markets",value:"UAE · KSA · EGY · TR · ZA"}]
+    : [{label:"Stories",value:String(total)},{label:"Corroborated",value:corroborated+" / "+total},{label:"Viewing",value:competitor}];
+
+  const summaryText = competitor === "All"
+    ? "Talabat dominates the week across two fronts: Q1 2026 results (12 May) beat guidance with GMV up 18% to $2.7B and raised full-year net income guidance to $300-330M, while its Cairo hub — MENA's largest at 27,000 sqm — became operational 28 April, processing up to 1 million items daily across 12 Egyptian cities. Three IPO stories converge: Noon confirmed its dual UAE-Saudi listing within 24 months at ~$10B valuation; Ninja is lining up Goldman Sachs and Citi for a $1B Tadawul debut; Careem is approaching IPO-readiness after its first profitable year."
+    : competitor + " appears in " + total + " stor" + (total!==1?"ies":"y") + " today" + (corroborated>0?", of which "+corroborated+" "+(corroborated===1?"is":"are")+" fully corroborated":"")+". "+filteredInsights.slice(0,2).map(i=>i.headline).join(". ");
+
+  return React.createElement('div',{style:{background:"linear-gradient(135deg,"+C.dark+" 0%,"+C.darkMid+" 100%)",borderRadius:14,padding:"24px 28px",marginBottom:24}},
+    React.createElement('p',{style:{fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"#475569",fontFamily:"'DM Mono',monospace",margin:"0 0 14px"}},
+      (competitor==="All"?"Executive Summary":"Summary · "+competitor)+" · 9–16 May 2026"),
+    React.createElement('p',{style:{fontSize:15,lineHeight:1.85,margin:"0 0 14px",fontFamily:"'Georgia',serif",color:"#cbd5e1"}},summaryText),
+    competitor==="All" && React.createElement('p',{style:{fontSize:14,lineHeight:1.8,margin:0,fontFamily:"'Georgia',serif",color:"#64748b",fontStyle:"italic"}},
+      "⚠ Monitoring: Alshaya Group's regulatory push against Shein/Temu — watch for GCC government response in H2 2026."),
+    React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:24,marginTop:20,paddingTop:16,borderTop:"1px solid rgba(255,255,255,0.07)"}},
+      stats.map(s=>React.createElement('div',{key:s.label},
+        React.createElement('div',{style:{fontSize:18,fontWeight:700,color:"#f8fafc",fontFamily:"'DM Sans',sans-serif"}},s.value),
+        React.createElement('div',{style:{fontSize:10,color:"#475569",fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.06em",marginTop:2}},s.label)
+      ))
+    )
+  );
+};
+
+function TodayTab({tags,bookmarks,onBookmark,competitor,setCompetitor,setActiveTab}) {
+  const [expanded,setExpanded] = useState(null);
+  const [showAll,setShowAll] = useState(false);
+  const [sortBy,setSortBy] = useState("latest");
+  const activeTags = tags.filter(t=>t.active).map(t=>t.label);
+  const filteredInsights = INSIGHTS
+    .filter(i=>competitor==="All"||i.competitor===competitor)
+    .sort((a,b)=>sortBy==="latest"?(b.id-a.id):(b.relevanceScore-a.relevanceScore));
+
+  return React.createElement('div',{style:{maxWidth:720,margin:"0 auto"}},
+    React.createElement('div',{style:{marginBottom:28}},
+      React.createElement('p',{style:{fontSize:11,letterSpacing:"0.12em",textTransform:"uppercase",color:C.subtle,fontFamily:"'DM Mono',monospace",margin:"0 0 6px"}},"MENA E-Commerce Intelligence · 9–16 May 2026"),
+      React.createElement('h1',{style:{fontSize:26,fontWeight:700,color:C.dark,margin:"0 0 16px",fontFamily:"'DM Sans',sans-serif"}},"Last 7 Days"),
+
+      // Company filter
+      React.createElement('div',{style:{marginBottom:16}},
+        React.createElement('span',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",display:"block",marginBottom:8}},"Filter by company"),
+        React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6}},
+          COMPETITORS.map(c=>React.createElement('button',{key:c,onClick:()=>setCompetitor(c),style:{padding:"4px 12px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Mono',monospace",border:competitor===c?"none":"1px solid "+C.border,background:competitor===c?C.dark:C.surface,color:competitor===c?"#f8fafc":C.muted}},c))
+        )
+      ),
+
+      // Sort + Priority toggle row
+      React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}},
+        // Sort toggle
+        React.createElement('div',{style:{display:"inline-flex",borderRadius:8,overflow:"hidden",border:"1px solid "+C.border}},
+          React.createElement('button',{onClick:()=>setSortBy("latest"),style:{padding:"6px 14px",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",background:sortBy==="latest"?C.dark:C.surface,color:sortBy==="latest"?"#f8fafc":C.muted}},"Latest first"),
+          React.createElement('button',{onClick:()=>setSortBy("relevant"),style:{padding:"6px 14px",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",background:sortBy==="relevant"?"#1d4ed8":C.surface,color:sortBy==="relevant"?"#f8fafc":C.muted,borderLeft:"1px solid "+C.border}},"Most relevant")
+        ),
+        // Priority/All toggle
+        React.createElement('div',{style:{display:"inline-flex",borderRadius:8,overflow:"hidden",border:"1px solid "+C.border}},
+          React.createElement('button',{onClick:()=>setShowAll(false),style:{padding:"6px 14px",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",background:!showAll?"#1d4ed8":C.surface,color:!showAll?"#f8fafc":C.muted}},"Priority"),
+          React.createElement('button',{onClick:()=>setShowAll(true),style:{padding:"6px 14px",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",background:showAll?C.dark:C.surface,color:showAll?"#f8fafc":C.muted,borderLeft:"1px solid "+C.border}},"All news")
+        )
+      ),
+
+      // Focus areas panel
+      !showAll && activeTags.length>0 && React.createElement('div',{style:{padding:"12px 14px",borderRadius:10,background:"#eff6ff",border:"1px solid #bfdbfe",marginBottom:16}},
+        React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:8}},
+          React.createElement('span',{style:{fontSize:10,color:"#1d4ed8",fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em"}},"Your focus areas:"),
+          activeTags.map(t=>React.createElement('span',{key:t,style:{fontSize:11,padding:"3px 10px",borderRadius:20,background:"#fff",color:"#1d4ed8",border:"1px solid #bfdbfe",fontFamily:"'DM Mono',monospace"}},t))
+        ),
+        React.createElement('p',{style:{fontSize:11,color:"#3b82f6",fontFamily:"'Georgia',serif",fontStyle:"italic",margin:0,lineHeight:1.6}},
+          "Stories ranked by your focus areas, boosted by saves. Everything corroborated appears — focus areas determine order. ",
+          React.createElement('span',{style:{color:"#1d4ed8",cursor:"pointer",textDecoration:"underline",fontStyle:"normal",fontFamily:"'DM Mono',monospace",fontSize:10},onClick:()=>setActiveTab("settings")},"Edit →")
+        )
+      ),
+
+      React.createElement(ExecSummary,{competitor,filteredInsights})
+    ),
+    React.createElement('p',{style:{fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:C.subtle,fontFamily:"'DM Mono',monospace",marginBottom:12}},
+      sortBy==="latest"?"Latest stories":"Insights — ranked by relevance",
+      competitor!=="All" && React.createElement('span',{style:{color:C.dark,fontWeight:700}}," · "+competitor)
+    ),
+    filteredInsights.length===0
+      ? React.createElement('div',{style:{background:C.surface,border:"1px solid "+C.border,borderRadius:12,padding:28,textAlign:"center"}},
+          React.createElement('p',{style:{fontSize:14,color:C.muted,fontFamily:"'DM Sans',sans-serif"}},"No stories for "+competitor+" in the last 7 days."))
+      : React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:10}},
+          filteredInsights.map(insight=>{
+            const saved=bookmarks.includes(insight.id);
+            return React.createElement('div',{key:insight.id,style:{border:"1px solid "+C.border,borderRadius:12,overflow:"hidden",background:C.surface,boxShadow:"0 1px 3px rgba(0,0,0,0.05)"}},
+              React.createElement('div',{style:{padding:"14px 18px",borderLeft:"4px solid "+insight.categoryColor,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12},onClick:()=>setExpanded(expanded===insight.id?null:insight.id)},
+                React.createElement('div',{style:{flex:1}},
+                  React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10,marginBottom:6}},
+                    React.createElement(CategoryTag,{category:insight.category,color:insight.categoryColor}),
+                    React.createElement('span',{style:{fontSize:10,fontFamily:"'DM Mono',monospace",color:C.subtle}},insight.relevanceScore+"% match"),
+                    insight.competitor && React.createElement('span',{style:{fontSize:10,padding:"1px 7px",borderRadius:10,background:C.faint,color:C.muted,border:"1px solid "+C.border,fontFamily:"'DM Mono',monospace"}},insight.competitor)
+                  ),
+                  React.createElement('p',{style:{margin:0,fontSize:14,fontWeight:600,color:C.dark,fontFamily:"'DM Sans',sans-serif",lineHeight:1.4}},insight.headline)
+                ),
+                React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
+                  !insight.corroborated && React.createElement('span',{style:{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:20,background:"#fff7ed",color:C.orange,border:"1px solid #fed7aa"}},"!"),
+                  React.createElement('button',{onClick:e=>{e.stopPropagation();onBookmark(insight.id);},style:{background:"none",border:"none",cursor:"pointer",fontSize:16,color:saved?"#f59e0b":C.border,padding:2}},saved?"★":"☆"),
+                  React.createElement('span',{style:{color:C.border,fontSize:16,display:"inline-block",transform:expanded===insight.id?"rotate(180deg)":"none",transition:"transform 0.2s"}},"⌄")
+                )
+              ),
+              expanded===insight.id && React.createElement('div',{style:{padding:"16px 18px 18px",borderTop:"1px solid "+C.faint,background:"#fafafa"}},
+                React.createElement('p',{style:{fontSize:14,lineHeight:1.8,color:"#334155",margin:"0 0 14px",fontFamily:"'Georgia',serif"}},insight.synthesis),
+                React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6}},
+                  insight.sources.map((s,i)=>React.createElement(SourceChip,{key:i,source:s}))
+                )
+              )
+            );
+          })
+        )
+  );
+}
+
+function TrendsTab({competitor,setCompetitor}) {
+  const [horizon,setHorizon] = useState("monthly");
+  const [market,setMarket] = useState("all");
+
+  // Dynamic period labels based on current date context (May 2026)
+  const periods = [
+    {key:"monthly",label:"May 2026",sub:"This month"},
+    {key:"monthly_prev",label:"April 2026",sub:"Last month"},
+    {key:"quarterly",label:"Q2 2026 (Apr–Jun)",sub:"This quarter"},
+    {key:"quarterly_prev",label:"Q1 2026 (Jan–Mar)",sub:"Last quarter"},
+  ];
+
+  // Map period keys to TRENDS data keys
+  const dataKey = horizon==="monthly"||horizon==="monthly_prev" ? "monthly" : "quarterly";
+  const data = TRENDS[dataKey];
+
+  const filteredInsights = data.insights.filter(ins=>{
+    const mObj = MARKETS_LIST.find(m=>m.id===market);
+    const marketOk = market==="all"||(mObj&&mObj.markets?ins.markets.some(m=>mObj.markets.includes(m)):true);
+    const compOk = competitor==="All"||ins.competitor===competitor;
+    return marketOk&&compOk;
+  });
+
+  const activePeriod = periods.find(p=>p.key===horizon)||periods[0];
+
+  return React.createElement('div',{style:{maxWidth:720,margin:"0 auto"}},
+    React.createElement('div',{style:{marginBottom:20}},
+      React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 4px"}},"Strategic Intelligence"),
+      React.createElement('h2',{style:{fontSize:22,fontWeight:700,color:C.dark,margin:"0 0 6px",fontFamily:"'DM Sans',sans-serif"}},"Trends Roundup"),
+      React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6}},
+        React.createElement('span',{style:{fontSize:12,color:C.subtle,fontFamily:"'DM Mono',monospace"}},"⏱ "+data.readMins+" min read"),
+        React.createElement('span',{style:{color:C.border}}," · "),
+        React.createElement('span',{style:{fontSize:12,color:C.subtle,fontFamily:"'DM Mono',monospace"}},data.storiesAnalysed+" stories analysed")
+      )
+    ),
+
+    // Filter bar — normalised to pill style matching Feed
+    React.createElement('div',{style:{marginBottom:20}},
+
+      // Period filter
+      React.createElement('div',{style:{marginBottom:14}},
+        React.createElement('span',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",display:"block",marginBottom:8}},"Time period"),
+        React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6}},
+          periods.map(p=>React.createElement('button',{key:p.key,onClick:()=>setHorizon(p.key),style:{
+            padding:"4px 14px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",
+            fontFamily:"'DM Mono',monospace",border:horizon===p.key?"none":"1px solid "+C.border,
+            background:horizon===p.key?C.dark:C.surface,color:horizon===p.key?"#f8fafc":C.muted}},
+            p.label
+          ))
+        )
+      ),
+
+      // Market filter
+      React.createElement('div',{style:{marginBottom:14}},
+        React.createElement('span',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",display:"block",marginBottom:8}},"Market"),
+        React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6}},
+          MARKETS_LIST.map(m=>React.createElement('button',{key:m.id,onClick:()=>setMarket(m.id),style:{
+            padding:"4px 14px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",
+            fontFamily:"'DM Mono',monospace",border:market===m.id?"none":"1px solid "+C.border,
+            background:market===m.id?C.dark:C.surface,color:market===m.id?"#f8fafc":C.muted}},
+            m.label
+          ))
+        )
+      ),
+
+      // Company filter
+      React.createElement('div',null,
+        React.createElement('span',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",display:"block",marginBottom:8}},"Filter by company"),
+        React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6}},
+          COMPETITORS.map(c=>React.createElement('button',{key:c,onClick:()=>setCompetitor(c),style:{
+            padding:"4px 12px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",
+            fontFamily:"'DM Mono',monospace",border:competitor===c?"none":"1px solid "+C.border,
+            background:competitor===c?C.dark:C.surface,color:competitor===c?"#f8fafc":C.muted}},c))
+        )
+      )
+    ),
+
+    // Summary block
+    React.createElement('div',{style:{background:"linear-gradient(135deg,"+C.dark+" 0%,"+C.darkMid+" 100%)",borderRadius:14,padding:"22px 26px",marginBottom:28}},
+      React.createElement('p',{style:{fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"#475569",fontFamily:"'DM Mono',monospace",margin:"0 0 12px"}},activePeriod.label+" Summary"),
+      React.createElement('p',{style:{fontSize:15,lineHeight:1.85,margin:0,fontFamily:"'Georgia',serif",color:"#cbd5e1"}},data.summary)
+    ),
+
+    filteredInsights.length===0
+      ? React.createElement('div',{style:{background:C.surface,border:"1px solid "+C.border,borderRadius:12,padding:28,textAlign:"center"}},React.createElement('p',{style:{fontSize:14,color:C.muted,fontFamily:"'DM Sans',sans-serif"}},"No insights match your current filters. Try broadening the selection."))
+      : React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:24}},
+          filteredInsights.map(insight=>React.createElement('div',{key:insight.id,style:{border:"1px solid "+C.border,borderRadius:14,overflow:"hidden",background:C.surface,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}},
+            React.createElement('div',{style:{padding:"18px 22px 16px",borderLeft:"5px solid "+insight.categoryColor,borderBottom:"1px solid "+C.faint}},
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}},
+                React.createElement(CategoryTag,{category:insight.category,color:insight.categoryColor}),
+                insight.markets.map(m=>React.createElement('span',{key:m,style:{fontSize:10,padding:"1px 6px",borderRadius:4,background:"#f0fdf4",color:"#15803d",border:"1px solid #bbf7d0",fontFamily:"'DM Mono',monospace"}},m)),
+                !insight.corroborated && React.createElement('span',{style:{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,background:"#fff7ed",color:C.orange,border:"1px solid #fed7aa"}},"⚠ Single source")
+              ),
+              React.createElement('h3',{style:{margin:0,fontSize:17,fontWeight:700,color:C.dark,fontFamily:"'DM Sans',sans-serif",lineHeight:1.35}},insight.headline)
+            ),
+            React.createElement('div',{style:{padding:"0 22px 22px"}},
+              insight.sections.map((sec,si)=>React.createElement('div',{key:si,style:{marginTop:22}},
+                React.createElement('p',{style:{fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:insight.categoryColor,fontFamily:"'DM Mono',monospace",margin:"0 0 8px"}},sec.theme),
+                React.createElement('p',{style:{fontSize:14,lineHeight:1.85,color:"#334155",margin:0,fontFamily:"'Georgia',serif"}},sec.body)
+              )),
+              React.createElement('div',{style:{marginTop:22,paddingTop:16,borderTop:"1px solid "+C.faint}},
+                React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 8px"}},"Sources"),
+                React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6}},
+                  insight.sources.map((s,i)=>React.createElement(SourceChip,{key:i,source:s}))
+                )
+              )
+            )
+          ))
+        )
+  );
+}
+
+function SavedTab({bookmarks,tags}) {
+  const savedInsights = INSIGHTS.filter(i=>bookmarks.includes(i.id));
+  const tagFreq = {};
+  savedInsights.forEach(i=>{if(i.competitor){tagFreq[i.competitor]=(tagFreq[i.competitor]||0)+1;}});
+  const total = Object.values(tagFreq).reduce((a,b)=>a+b,0)||1;
+
+  return React.createElement('div',{style:{maxWidth:720,margin:"0 auto"}},
+    React.createElement('div',{style:{marginBottom:24}},
+      React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 4px"}},"Your Library"),
+      React.createElement('h2',{style:{fontSize:22,fontWeight:700,color:C.dark,margin:0,fontFamily:"'DM Sans',sans-serif"}},"Saved Articles")
+    ),
+    savedInsights.length>0 && React.createElement('div',{style:{background:"linear-gradient(135deg,"+C.dark+" 0%,"+C.darkMid+" 100%)",borderRadius:14,padding:"22px 26px",marginBottom:24}},
+      React.createElement('p',{style:{fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"#475569",fontFamily:"'DM Mono',monospace",margin:"0 0 12px"}},"What the app has learned from your saves"),
+      React.createElement('p',{style:{fontSize:14,lineHeight:1.75,color:"#cbd5e1",fontFamily:"'Georgia',serif",margin:"0 0 18px"}},"Based on "+savedInsights.length+" saved article"+(savedInsights.length!==1?"s":"")+", you are tracking: "+Object.entries(tagFreq).map(([k,v])=>k+" ("+Math.round(v/total*100)+"%)").join(", ")+"."),
+      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},
+        Object.entries(tagFreq).map(([tag,count])=>React.createElement('div',{key:tag,style:{display:"flex",alignItems:"center",gap:12}},
+          React.createElement('span',{style:{fontSize:11,color:"#94a3b8",fontFamily:"'DM Mono',monospace",width:120,flexShrink:0}},tag),
+          React.createElement('div',{style:{flex:1,height:6,background:"rgba(255,255,255,0.08)",borderRadius:3,overflow:"hidden"}},React.createElement('div',{style:{width:(count/total*100)+"%",height:"100%",background:"#3b82f6",borderRadius:3}})),
+          React.createElement('span',{style:{fontSize:11,color:"#64748b",fontFamily:"'DM Mono',monospace",width:32,textAlign:"right"}},Math.round(count/total*100)+"%")
+        ))
+      )
+    ),
+    savedInsights.length===0
+      ? React.createElement('div',{style:{background:C.surface,border:"1px solid "+C.border,borderRadius:12,padding:28,textAlign:"center"}},React.createElement('p',{style:{fontSize:14,color:C.muted,fontFamily:"'DM Sans',sans-serif"}},"No saved articles yet. Star stories on the Today tab to save them here."))
+      : React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},
+          savedInsights.map(article=>React.createElement('div',{key:article.id,style:{border:"1px solid "+C.border,borderRadius:12,padding:"14px 18px",background:C.surface,display:"flex",alignItems:"flex-start",gap:14}},
+            React.createElement('div',{style:{flex:1}},
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},React.createElement(CategoryTag,{category:article.category,color:article.categoryColor})),
+              React.createElement('p',{style:{margin:"0 0 8px",fontSize:14,fontWeight:600,color:C.dark,fontFamily:"'DM Sans',sans-serif",lineHeight:1.4}},article.headline),
+              React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6}},article.sources.slice(0,1).map((s,i)=>React.createElement(SourceChip,{key:i,source:s})))
+            ),
+            React.createElement('span',{style:{color:"#f59e0b",fontSize:18,flexShrink:0}},"★")
+          ))
+        )
+  );
+}
+
+function SettingsTab({tags,setTags}) {
+  const [input,setInput] = useState("");
+  const addTag = () => {
+    const t=input.trim();
+    if(!t||tags.find(x=>x.label.toLowerCase()===t.toLowerCase()))return;
+    setTags([...tags,{id:Date.now(),label:t,active:true,priority:tags.length+1}]);
+    setInput("");
+  };
+  const removeTag = id=>setTags(tags.filter(t=>t.id!==id));
+  const toggleTag = id=>setTags(tags.map(t=>t.id===id?{...t,active:!t.active}:t));
+  const moveTag = (id,dir)=>{
+    const idx=tags.findIndex(t=>t.id===id);
+    if(dir==="up"&&idx===0)return;
+    if(dir==="down"&&idx===tags.length-1)return;
+    const n=[...tags];const sw=dir==="up"?idx-1:idx+1;
+    [n[idx],n[sw]]=[n[sw],n[idx]];
+    setTags(n.map((t,i)=>({...t,priority:i+1})));
+  };
+
+  return React.createElement('div',{style:{maxWidth:720,margin:"0 auto"}},
+    React.createElement('div',{style:{marginBottom:28}},
+      React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 4px"}},"Personalisation"),
+      React.createElement('h2',{style:{fontSize:22,fontWeight:700,color:C.dark,margin:"0 0 8px",fontFamily:"'DM Sans',sans-serif"}},"Interest Profile"),
+      React.createElement('p',{style:{fontSize:14,color:C.muted,margin:0,fontFamily:"'Georgia',serif",lineHeight:1.6}},"These tags tell the app what to surface first. Higher priority = ranked first in your daily feed.")
+    ),
+    React.createElement('div',{style:{marginBottom:28}},
+      React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 10px"}},"Add a new focus area"),
+      React.createElement('div',{style:{display:"flex",gap:8}},
+        React.createElement('input',{value:input,onChange:e=>setInput(e.target.value),onKeyDown:e=>e.key==="Enter"&&addTag(),placeholder:"e.g. Egypt grocery delivery, Noon logistics...",style:{flex:1,padding:"10px 14px",borderRadius:10,border:"1px solid "+C.border,fontSize:14,fontFamily:"'DM Sans',sans-serif",color:C.dark,outline:"none"}}),
+        React.createElement('button',{onClick:addTag,style:{padding:"10px 20px",borderRadius:10,border:"none",background:C.dark,color:"#f8fafc",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}},"+ Add")
+      )
+    ),
+    React.createElement('div',{style:{marginBottom:28}},
+      React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
+        React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:0}},"Priority order"),
+        React.createElement('span',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace"}},tags.filter(t=>t.active).length+" active")
+      ),
+      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},
+        tags.map((tag,idx)=>React.createElement('div',{key:tag.id,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderRadius:12,border:"1px solid "+(tag.active?"#bfdbfe":C.border),background:tag.active?"#eff6ff":C.faint,opacity:tag.active?1:0.5}},
+          React.createElement('span',{style:{fontSize:12,fontWeight:700,fontFamily:"'DM Mono',monospace",color:tag.active?"#1d4ed8":C.subtle,width:20,textAlign:"center",flexShrink:0}},idx+1),
+          React.createElement('span',{style:{flex:1,fontSize:14,fontWeight:500,color:tag.active?C.dark:C.muted,fontFamily:"'DM Sans',sans-serif"}},tag.label),
+          React.createElement('div',{style:{display:"flex",gap:4,alignItems:"center"}},
+            React.createElement('button',{onClick:()=>moveTag(tag.id,"up"),style:{background:"none",border:"none",cursor:"pointer",color:C.subtle,fontSize:14,padding:"2px 4px"}},"↑"),
+            React.createElement('button',{onClick:()=>moveTag(tag.id,"down"),style:{background:"none",border:"none",cursor:"pointer",color:C.subtle,fontSize:14,padding:"2px 4px"}},"↓"),
+            React.createElement('button',{onClick:()=>toggleTag(tag.id),style:{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'DM Mono',monospace",border:"1px solid "+(tag.active?"#93c5fd":C.border),background:tag.active?"#dbeafe":C.surface,color:tag.active?"#1d4ed8":C.subtle}},tag.active?"Active":"Paused"),
+            React.createElement('button',{onClick:()=>removeTag(tag.id),style:{background:"none",border:"none",cursor:"pointer",color:"#fca5a5",fontSize:16,padding:"2px 4px"}},"×")
+          )
+        ))
+      )
+    ),
+    React.createElement('div',{style:{background:C.faint,borderRadius:12,padding:"18px 20px",border:"1px solid "+C.border}},
+      React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 10px"}},"How this influences your feed"),
+      [{rank:"1st",label:"Interest profile",desc:"Active tags, in priority order — always ranks highest"},
+       {rank:"2nd",label:"Bookmark behaviour",desc:"What you save teaches the app your implicit preferences"},
+       {rank:"3rd",label:"Editorial baseline",desc:"Source tier + corroboration — non-negotiable floor"}].map(row=>
+        React.createElement('div',{key:row.rank,style:{display:"flex",gap:12,alignItems:"flex-start",marginBottom:8}},
+          React.createElement('span',{style:{fontSize:11,fontWeight:700,fontFamily:"'DM Mono',monospace",color:"#1d4ed8",width:28,flexShrink:0}},row.rank),
+          React.createElement('div',null,
+            React.createElement('span',{style:{fontSize:13,fontWeight:600,color:C.dark,fontFamily:"'DM Sans',sans-serif"}},row.label+" "),
+            React.createElement('span',{style:{fontSize:13,color:C.muted,fontFamily:"'Georgia',serif"}},"— "+row.desc)
+          )
+        )
+      )
+    )
+  );
+}
+
+const BENCH_COMPANIES = [
+  {name:"Talabat",country:"UAE (HQ)",flag:"🇦🇪",listed:true,exchange:"DFM",availability:"high",fy2025_revenue:{value:"$3.89B",raw:3890,reported:true,source:"Annual Report 2025",date:"Mar 2026"},fy2025_growth:{value:"+22%",raw:22,reported:true},q1_2026_revenue:{value:"$1.05B",raw:1050,reported:true,source:"Q1 2026 Earnings",date:"12 May 2026"},q1_2026_growth:{value:"+22%",raw:22,reported:true},fy2025_ebitda:{value:"$520M",raw:520,reported:true,note:"Adjusted EBITDA"},fy2025_ebitda_margin:{value:"13.4%",reported:true},q1_2026_ebitda:{value:"$130M",raw:130,reported:true},q1_2026_ebitda_margin:{value:"12.4%",reported:true},marketing:{value:"~$280M",reported:false,note:"Est. from S&M line"},gmv:{value:"$10.8B",reported:true,note:"FY2025"},gmv_growth:{value:"+18%",reported:true},note:"Q1 2026 Egypt non-GCC GMV +52% YoY"},
+  {name:"Noon",country:"UAE / KSA",flag:"🇦🇪",listed:false,exchange:"Private",availability:"low",fy2025_revenue:{value:"~$1.2B",raw:1200,reported:false,note:"Est. Redseer"},fy2025_growth:{value:"~+20%",raw:20,reported:false},q1_2026_revenue:{value:"N/A",raw:null,reported:false},q1_2026_growth:{value:"N/A",raw:null,reported:false},fy2025_ebitda:{value:"N/A",raw:null,reported:false},fy2025_ebitda_margin:{value:"N/A",reported:false},q1_2026_ebitda:{value:"N/A",raw:null,reported:false},q1_2026_ebitda_margin:{value:"N/A",reported:false},marketing:{value:"N/A",reported:false},gmv:{value:"~$5-6B",reported:false,note:"Est. Redseer FY2024"},gmv_growth:{value:"N/A",reported:false},note:"IPO targeted within 24 months at ~$10B valuation"},
+  {name:"Trendyol",country:"Turkey",flag:"🇹🇷",listed:false,exchange:"Private",availability:"medium",fy2025_revenue:{value:"~$4.9B",raw:4900,reported:false,note:"Net sales est."},fy2025_growth:{value:"~+52%",raw:52,reported:false},q1_2026_revenue:{value:"N/A",raw:null,reported:false},q1_2026_growth:{value:"N/A",raw:null,reported:false},fy2025_ebitda:{value:"N/A",raw:null,reported:false},fy2025_ebitda_margin:{value:"N/A",reported:false},q1_2026_ebitda:{value:"N/A",raw:null,reported:false},q1_2026_ebitda_margin:{value:"N/A",reported:false},marketing:{value:"N/A",reported:false},gmv:{value:">$1B",reported:true,note:"Gulf GMV confirmed"},gmv_growth:{value:"N/A",reported:false},note:"200k daily GCC orders. IPO targeted pre-2030"},
+  {name:"Careem",country:"UAE",flag:"🇦🇪",listed:false,exchange:"Private (e& stake)",availability:"medium",fy2025_revenue:{value:"N/A",raw:null,reported:false},fy2025_growth:{value:"N/A",raw:null,reported:false},q1_2026_revenue:{value:"N/A",raw:null,reported:false},q1_2026_growth:{value:"N/A",raw:null,reported:false},fy2025_ebitda:{value:"$48M",raw:48,reported:true,note:"Adj. EBITDA — first positive year"},fy2025_ebitda_margin:{value:"N/A",reported:false},q1_2026_ebitda:{value:"N/A",raw:null,reported:false},q1_2026_ebitda_margin:{value:"N/A",reported:false},marketing:{value:"N/A",reported:false},gmv:{value:"$3.2B",reported:true,note:"GTV FY2025"},gmv_growth:{value:"N/A",reported:false},note:"Careem Pay: $2B+ annualised volume. IPO ADX/DFM possible late 2026"},
+  {name:"Keeta",country:"KSA",flag:"🇸🇦",listed:false,exchange:"Private (Meituan)",availability:"low",fy2025_revenue:{value:"N/A",raw:null,reported:false},fy2025_growth:{value:"N/A",raw:null,reported:false},q1_2026_revenue:{value:"N/A",raw:null,reported:false},q1_2026_growth:{value:"N/A",raw:null,reported:false},fy2025_ebitda:{value:"N/A",raw:null,reported:false},fy2025_ebitda_margin:{value:"N/A",reported:false},q1_2026_ebitda:{value:"N/A",raw:null,reported:false},q1_2026_ebitda_margin:{value:"N/A",reported:false},marketing:{value:"N/A",reported:false},gmv:{value:"N/A",reported:false},gmv_growth:{value:"N/A",reported:false},note:"SR1B ($267M) invested in KSA. 3rd largest food delivery in KSA within 4 months"},
+  {name:"Shein",country:"Singapore (HQ)",flag:"🇸🇬",listed:false,exchange:"Private",availability:"low",fy2025_revenue:{value:"~$50B",raw:50000,reported:false,note:"Global est."},fy2025_growth:{value:"~+20%",raw:20,reported:false},q1_2026_revenue:{value:"N/A",raw:null,reported:false},q1_2026_growth:{value:"N/A",raw:null,reported:false},fy2025_ebitda:{value:"~$2.5B",raw:2500,reported:false,note:"Global est."},fy2025_ebitda_margin:{value:"~5%",reported:false},q1_2026_ebitda:{value:"N/A",raw:null,reported:false},q1_2026_ebitda_margin:{value:"N/A",reported:false},marketing:{value:"~$2.5B",reported:false,note:"Global est."},gmv:{value:"N/A",reported:false},gmv_growth:{value:"N/A",reported:false},note:"Semi-managed seller model launched in MENA April 2026"},
+  {name:"Jumia",country:"Pan-Africa",flag:"🌍",listed:true,exchange:"NYSE",availability:"high",fy2025_revenue:{value:"$172M",raw:172,reported:true,source:"FY2025 Annual Report"},fy2025_growth:{value:"+19%",raw:19,reported:true},q1_2026_revenue:{value:"N/A",raw:null,reported:false},q1_2026_growth:{value:"N/A",raw:null,reported:false},fy2025_ebitda:{value:"-$28M",raw:-28,reported:true,note:"Adj. EBITDA loss"},fy2025_ebitda_margin:{value:"-16%",reported:true},q1_2026_ebitda:{value:"N/A",raw:null,reported:false},q1_2026_ebitda_margin:{value:"N/A",reported:false},marketing:{value:"$18M",reported:true,note:"FY2025 S&M spend"},gmv:{value:"$642M",reported:true,note:"FY2024 GMV"},gmv_growth:{value:"+34%",reported:true},note:"Targeting EBITDA breakeven late 2026"},
+  {name:"Takealot",country:"South Africa",flag:"🇿🇦",listed:false,exchange:"Private (Prosus)",availability:"medium",fy2025_revenue:{value:"~$820M",raw:820,reported:true,source:"Prosus FY2025 report"},fy2025_growth:{value:"+15%",raw:15,reported:true},q1_2026_revenue:{value:"N/A",raw:null,reported:false},q1_2026_growth:{value:"N/A",raw:null,reported:false},fy2025_ebitda:{value:"~Break-even",raw:0,reported:false},fy2025_ebitda_margin:{value:"~0%",reported:false},q1_2026_ebitda:{value:"N/A",raw:null,reported:false},q1_2026_ebitda_margin:{value:"N/A",reported:false},marketing:{value:"N/A",reported:false},gmv:{value:"N/A",reported:false},gmv_growth:{value:"N/A",reported:false},note:"Opened marketplace to Chinese sellers to compete with Temu/Shein on price"},
+];
+
+const AVAIL_COLOR={high:"#16a34a",medium:"#ca8a04",low:"#dc2626"};
+const AVAIL_LABEL={high:"High",medium:"Medium",low:"Low"};
+
+function BenchmarksTab() {
+  const [selected,setSelected] = React.useState(null);
+  const [metric,setMetric] = React.useState("gmv");
+  const [chartCompany,setChartCompany] = React.useState("Talabat");
+
+  const metrics=[
+    {key:"gmv",label:"GMV",sub:"Gross Merchandise Value"},
+    {key:"fy2025_revenue",label:"FY2025 Revenue",sub:"Full year"},
+    {key:"q1_2026_revenue",label:"Q1 2026 Revenue",sub:"Last quarter (Q1)"},
+    {key:"fy2025_ebitda",label:"FY2025 EBITDA",sub:"Full year"},
+    {key:"q1_2026_ebitda",label:"Q1 2026 EBITDA",sub:"Last quarter (Q1)"},
+  ];
+
+  // Quarterly chart data per company
+  const quarterlyData = {
+    Talabat:[
+      {q:"Q1 2025",revenue:861,ebitda:108},{q:"Q2 2025",revenue:920,ebitda:115},
+      {q:"Q3 2025",revenue:1050,ebitda:140},{q:"Q4 2025",revenue:1059,ebitda:157},
+      {q:"Q1 2026",revenue:1050,ebitda:130},
+    ],
+    Jumia:[
+      {q:"Q1 2025",revenue:38,ebitda:-12},{q:"Q2 2025",revenue:41,ebitda:-9},
+      {q:"Q3 2025",revenue:44,ebitda:-6},{q:"Q4 2025",revenue:49,ebitda:-1},
+      {q:"Q1 2026",revenue:null,ebitda:null},
+    ],
+    Noon:[
+      {q:"Q1 2025",revenue:null,ebitda:null},{q:"Q2 2025",revenue:null,ebitda:null},
+      {q:"Q3 2025",revenue:null,ebitda:null},{q:"Q4 2025",revenue:null,ebitda:null},
+      {q:"Q1 2026",revenue:null,ebitda:null},
+    ],
+  };
+
+  const maxVal=Math.max(...BENCH_COMPANIES.map(c=>c[metric]?.raw||0));
+  const getSecondary=(co)=>{
+    if(metric==="gmv")return co.gmv_growth;
+    if(metric==="fy2025_revenue")return co.fy2025_growth;
+    if(metric==="q1_2026_revenue")return co.q1_2026_growth;
+    if(metric==="fy2025_ebitda")return co.fy2025_ebitda_margin;
+    if(metric==="q1_2026_ebitda")return co.q1_2026_ebitda_margin;
+    return null;
+  };
+  const secLabel=metric.includes("ebitda")?"margin":"YoY";
+
+  // Simple bar chart renderer
+  const chartCo = BENCH_COMPANIES.find(c=>c.name===chartCompany);
+  const cData = quarterlyData[chartCompany]||[];
+  const hasChartData = cData.some(d=>d.revenue!==null);
+  const chartMaxRev = Math.max(...cData.map(d=>d.revenue||0));
+  const chartMaxEbitda = Math.max(...cData.map(d=>Math.abs(d.ebitda||0)));
+
+  return React.createElement('div',{style:{maxWidth:720,margin:"0 auto"}},
+    React.createElement('div',{style:{marginBottom:24}},
+      React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 4px"}},"Financial Intelligence"),
+      React.createElement('h2',{style:{fontSize:22,fontWeight:700,color:C.dark,margin:"0 0 4px",fontFamily:"'DM Sans',sans-serif"}},"Competitor Benchmarks"),
+      React.createElement('p',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace",margin:0}},"Last updated: 16 May 2026 · "+BENCH_COMPANIES.length+" companies tracked")
+    ),
+
+    // Stats strip
+    React.createElement('div',{style:{display:"flex",gap:20,marginBottom:24,flexWrap:"wrap"}},
+      [{label:"Public",value:BENCH_COMPANIES.filter(c=>c.listed).length},
+       {label:"Private",value:BENCH_COMPANIES.filter(c=>!c.listed).length},
+       {label:"High data",value:BENCH_COMPANIES.filter(c=>c.availability==="high").length},
+       {label:"Low data",value:BENCH_COMPANIES.filter(c=>c.availability==="low").length}
+      ].map(s=>React.createElement('div',{key:s.label,style:{background:C.surface,border:"1px solid "+C.border,borderRadius:10,padding:"10px 16px"}},
+        React.createElement('div',{style:{fontSize:20,fontWeight:700,color:C.dark,fontFamily:"'DM Sans',sans-serif"}},s.value),
+        React.createElement('div',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.06em"}},s.label)
+      ))
+    ),
+
+    // GMV tooltip note
+    React.createElement('div',{style:{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"8px 12px",marginBottom:16}},
+      React.createElement('p',{style:{fontSize:11,color:"#1d4ed8",fontFamily:"'Georgia',serif",margin:0}},"💡 GMV (Gross Merchandise Value) = total value of all goods sold through the platform. A measure of trading scale, not profit. Revenue is what the platform actually keeps.")
+    ),
+
+    // Metric selector
+    React.createElement('div',{style:{marginBottom:20}},
+      React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}},"Compare by"),
+      React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
+        metrics.map(m=>React.createElement('button',{key:m.key,onClick:()=>setMetric(m.key),style:{
+          padding:"10px 14px",borderRadius:10,fontSize:12,fontWeight:600,cursor:"pointer",
+          fontFamily:"'DM Sans',sans-serif",textAlign:"left",
+          border:metric===m.key?"none":"1px solid "+C.border,
+          background:metric===m.key?C.dark:C.surface,
+          color:metric===m.key?"#f8fafc":C.muted,transition:"all 0.15s"}},
+          React.createElement('div',null,m.label),
+          React.createElement('div',{style:{fontSize:10,opacity:0.6,fontFamily:"'DM Mono',monospace",marginTop:2}},m.sub)
+        ))
+      )
+    ),
+
+    // Bar comparison
+    React.createElement('div',{style:{background:C.surface,border:"1px solid "+C.border,borderRadius:12,padding:"18px",marginBottom:24}},
+      React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:16}},
+        (metrics.find(m=>m.key===metric)||{}).label+" — side by side"
+      ),
+      BENCH_COMPANIES.map(co=>{
+        const val=co[metric];
+        const sec=getSecondary(co);
+        const pct=maxVal>0&&val&&val.raw?Math.max((val.raw/maxVal)*100,4):4;
+        const hasData=val&&val.value!=="N/A"&&val.raw!==null;
+        return React.createElement('div',{key:co.name,style:{marginBottom:14,cursor:"pointer"},onClick:()=>setSelected(selected===co.name?null:co.name)},
+          React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:5}},
+            React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6}},
+              React.createElement('span',{style:{fontSize:14}},co.flag),
+              React.createElement('span',{style:{fontSize:13,fontWeight:600,color:C.dark,fontFamily:"'DM Sans',sans-serif"}},co.name),
+              React.createElement('span',{style:{fontSize:9,fontWeight:700,padding:"1px 4px",borderRadius:3,background:co.listed?"#dcfce7":"#f1f5f9",color:co.listed?"#16a34a":"#64748b"}},co.listed?"PUB":"PRV")
+            ),
+            React.createElement('div',{style:{textAlign:"right"}},
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:4,justifyContent:"flex-end"}},
+                React.createElement('span',{style:{fontSize:13,fontWeight:700,color:hasData?C.dark:"#94a3b8",fontFamily:"'DM Mono',monospace"}},val&&val.value||"N/A"),
+                hasData&&React.createElement('span',{style:{fontSize:8,fontWeight:700,padding:"1px 4px",borderRadius:2,background:val.reported?"#dcfce7":"#fff7ed",color:val.reported?"#16a34a":"#c2410c"}},val.reported?"R":"E")
+              ),
+              sec&&sec.value!=="N/A"&&React.createElement('div',{style:{fontSize:10,color:sec.value&&sec.value.startsWith("-")?"#dc2626":"#16a34a",fontFamily:"'DM Mono',monospace"}},sec.value+" "+secLabel)
+            )
+          ),
+          React.createElement('div',{style:{height:8,background:C.faint,borderRadius:4,overflow:"hidden"}},
+            React.createElement('div',{style:{width:pct+"%",height:"100%",borderRadius:4,background:hasData?(val.reported?C.dark:"#94a3b8"):"#e2e8f0",transition:"width 0.4s ease"}})
+          )
+        );
+      }),
+      React.createElement('div',{style:{display:"flex",gap:16,marginTop:14,paddingTop:12,borderTop:"1px solid "+C.faint,flexWrap:"wrap"}},
+        [{bg:C.dark,label:"R = Reported"},{bg:"#94a3b8",label:"E = Estimated"},{bg:"#e2e8f0",label:"N/A = Not disclosed"}].map(l=>
+          React.createElement('div',{key:l.label,style:{display:"flex",alignItems:"center",gap:6}},
+            React.createElement('div',{style:{width:10,height:10,borderRadius:2,background:l.bg,flexShrink:0}}),
+            React.createElement('span',{style:{fontSize:10,color:C.muted,fontFamily:"'DM Mono',monospace"}},l.label)
+          )
+        )
+      )
+    ),
+
+    // Quarterly chart section
+    React.createElement('div',{style:{background:C.surface,border:"1px solid "+C.border,borderRadius:12,padding:"18px",marginBottom:24}},
+      React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}},"Quarterly trend — revenue & EBITDA ($M)"),
+      React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}},
+        BENCH_COMPANIES.map(co=>React.createElement('button',{key:co.name,onClick:()=>setChartCompany(co.name),style:{
+          padding:"4px 12px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",
+          fontFamily:"'DM Mono',monospace",border:chartCompany===co.name?"none":"1px solid "+C.border,
+          background:chartCompany===co.name?C.dark:C.surface,color:chartCompany===co.name?"#f8fafc":C.muted}},
+          co.flag+" "+co.name
+        ))
+      ),
+      !hasChartData
+        ? React.createElement('div',{style:{padding:"32px 0",textAlign:"center"}},
+            React.createElement('p',{style:{fontSize:13,color:C.muted,fontFamily:"'Georgia',serif",fontStyle:"italic"}},"Quarterly data not publicly available for "+chartCompany))
+        : React.createElement('div',null,
+            // Revenue bars
+            React.createElement('p',{style:{fontSize:10,color:"#3b82f6",fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.06em",margin:"0 0 8px"}},"Revenue ($M)"),
+            React.createElement('div',{style:{display:"flex",gap:6,alignItems:"flex-end",height:80,marginBottom:16}},
+              cData.map(d=>React.createElement('div',{key:d.q,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
+                d.revenue!==null
+                  ? React.createElement('div',{style:{width:"100%",background:"#3b82f6",borderRadius:"3px 3px 0 0",height:Math.max((d.revenue/chartMaxRev)*70,4)+"px",transition:"height 0.4s ease"}})
+                  : React.createElement('div',{style:{width:"100%",background:"#e2e8f0",borderRadius:"3px 3px 0 0",height:"4px"}}),
+                React.createElement('span',{style:{fontSize:9,color:C.subtle,fontFamily:"'DM Mono',monospace",textAlign:"center"}},d.q)
+              ))
+            ),
+            // EBITDA bars
+            React.createElement('p',{style:{fontSize:10,color:C.muted,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.06em",margin:"0 0 8px"}},"EBITDA ($M)"),
+            React.createElement('div',{style:{display:"flex",gap:6,alignItems:"flex-end",height:60}},
+              cData.map(d=>React.createElement('div',{key:d.q,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
+                d.ebitda!==null
+                  ? React.createElement('div',{style:{width:"100%",background:d.ebitda>=0?"#0f172a":"#dc2626",borderRadius:"3px 3px 0 0",height:Math.max((Math.abs(d.ebitda)/chartMaxEbitda)*50,4)+"px",transition:"height 0.4s ease"}})
+                  : React.createElement('div',{style:{width:"100%",background:"#e2e8f0",borderRadius:"3px 3px 0 0",height:"4px"}}),
+                React.createElement('span',{style:{fontSize:9,color:C.subtle,fontFamily:"'DM Mono',monospace",textAlign:"center",fontSize:8}},
+                  d.ebitda!==null?d.ebitda:"—")
+              ))
+            ),
+            React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",marginTop:10,fontStyle:"italic"}},"Only companies with public quarterly reporting shown. Others: data not disclosed.")
+          )
+    ),
+
+    // Expandable cards
+    React.createElement('p',{style:{fontSize:10,color:C.subtle,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}},"Tap for full details"),
+    BENCH_COMPANIES.map(co=>
+      React.createElement('div',{key:co.name,style:{border:"1px solid "+C.border,borderRadius:12,marginBottom:8,overflow:"hidden",background:C.surface}},
+        React.createElement('div',{style:{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"},onClick:()=>setSelected(selected===co.name?null:co.name)},
+          React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8}},
+            React.createElement('span',{style:{fontSize:20}},co.flag),
+            React.createElement('div',null,
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6}},
+                React.createElement('span',{style:{fontSize:14,fontWeight:700,color:C.dark,fontFamily:"'DM Sans',sans-serif"}},co.name),
+                React.createElement('span',{style:{fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:3,background:co.listed?"#dcfce7":"#f1f5f9",color:co.listed?"#16a34a":"#64748b"}},co.listed?"PUBLIC":"PRIVATE")
+              ),
+              React.createElement('span',{style:{fontSize:11,color:C.subtle,fontFamily:"'DM Mono',monospace"}},co.country+" · "+co.exchange)
+            )
+          ),
+          React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8}},
+            React.createElement('span',{style:{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:AVAIL_COLOR[co.availability]+"20",color:AVAIL_COLOR[co.availability],fontFamily:"'DM Mono',monospace"}},AVAIL_LABEL[co.availability]+" data"),
+            React.createElement('span',{style:{color:C.border,fontSize:14,transform:selected===co.name?"rotate(180deg)":"none",transition:"transform 0.2s"}},"⌄")
+          )
+        ),
+        selected===co.name&&React.createElement('div',{style:{padding:"0 16px 16px",borderTop:"1px solid "+C.faint}},
+          [{label:"GMV (Gross Merchandise Value)",metric:co.gmv,growth:co.gmv_growth},
+           {label:"FY2025 Revenue",metric:co.fy2025_revenue,growth:co.fy2025_growth},
+           {label:"Q1 2026 Revenue",metric:co.q1_2026_revenue,growth:co.q1_2026_growth},
+           {label:"FY2025 EBITDA",metric:co.fy2025_ebitda,margin:co.fy2025_ebitda_margin},
+           {label:"Q1 2026 EBITDA",metric:co.q1_2026_ebitda,margin:co.q1_2026_ebitda_margin},
+           {label:"Marketing Spend",metric:co.marketing},
+          ].map(row=>
+            React.createElement('div',{key:row.label,style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"10px 0",borderBottom:"1px solid #f8fafc"}},
+              React.createElement('span',{style:{fontSize:10,color:C.muted,fontFamily:"'DM Mono',monospace",textTransform:"uppercase",letterSpacing:"0.06em"}},row.label),
+              React.createElement('div',{style:{textAlign:"right"}},
+                !row.metric||row.metric.value==="N/A"
+                  ?React.createElement('span',{style:{fontSize:12,color:"#94a3b8",fontFamily:"'DM Mono',monospace"}},"Not disclosed")
+                  :React.createElement(React.Fragment,null,
+                    React.createElement('div',{style:{display:"flex",alignItems:"center",gap:4,justifyContent:"flex-end"}},
+                      React.createElement('span',{style:{fontSize:13,fontWeight:700,color:C.dark,fontFamily:"'DM Mono',monospace"}},row.metric.value),
+                      React.createElement('span',{style:{fontSize:8,fontWeight:700,padding:"1px 4px",borderRadius:2,background:row.metric.reported?"#dcfce7":"#fff7ed",color:row.metric.reported?"#16a34a":"#c2410c"}},row.metric.reported?"REPORTED":"EST.")
+                    ),
+                    row.growth&&row.growth.value!=="N/A"&&React.createElement('div',{style:{fontSize:11,color:"#16a34a",fontFamily:"'DM Mono',monospace"}},row.growth.value+" YoY"),
+                    row.margin&&row.margin.value!=="N/A"&&React.createElement('div',{style:{fontSize:11,color:C.muted,fontFamily:"'DM Mono',monospace"}},row.margin.value+" margin"),
+                    row.metric.note&&React.createElement('div',{style:{fontSize:10,color:"#94a3b8",fontFamily:"'DM Mono',monospace",marginTop:2}},row.metric.note),
+                    row.metric.source&&React.createElement('div',{style:{fontSize:10,color:"#3b82f6",fontFamily:"'DM Mono',monospace",marginTop:2}},"Source: "+row.metric.source+(row.metric.date?" · "+row.metric.date:""))
+                  )
+              )
+            )
+          ),
+          co.note&&React.createElement('div',{style:{marginTop:10,padding:"8px 10px",background:C.faint,borderRadius:8}},
+            React.createElement('p',{style:{fontSize:11,color:C.muted,fontFamily:"'Georgia',serif",fontStyle:"italic",margin:0}},"💡 "+co.note)
+          )
+        )
+      )
+    )
+  );
+}
+
+function App() {
+  const [activeTab,setActiveTab] = useState("today");
+  const [tags,setTags] = useState(INITIAL_TAGS);
+  const [bookmarks,setBookmarks] = useState([]);
+  const [todayCompetitor,setTodayCompetitor] = useState("All");
+  const [trendsCompetitor,setTrendsCompetitor] = useState("All");
+  const toggleBookmark = id=>setBookmarks(prev=>prev.includes(id)?prev.filter(b=>b!==id):[...prev,id]);
+  const tabs = [
+    {id:"today",label:"Feed"},
+    {id:"trends",label:"Trends"},
+    {id:"benchmarks",label:"Benchmarks"},
+    {id:"saved",label:"Saved"+(bookmarks.length>0?" ("+bookmarks.length+")":"")},
+    {id:"settings",label:"⚙ Profile"},
+  ];
+
+  return React.createElement('div',{style:{minHeight:"100vh",background:C.bg,fontFamily:"'DM Sans',sans-serif"}},
+
+    // ── NAV ──
+    React.createElement('div',{style:{position:"sticky",top:0,zIndex:10,background:"#0f172a",boxShadow:"0 2px 12px rgba(0,0,0,0.25)"}},
+      // Logo row
+      React.createElement('div',{style:{padding:"14px 24px 0",display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        React.createElement('span',{style:{fontSize:16,fontWeight:800,color:"#f8fafc",fontFamily:"'DM Sans',sans-serif",letterSpacing:"-0.03em"}},
+          "MENA",React.createElement('span',{style:{color:"#3b82f6"}},"intel")
+        ),
+        React.createElement('span',{style:{fontSize:10,color:"#475569",fontFamily:"'DM Mono',monospace",letterSpacing:"0.06em",textTransform:"uppercase"}},"16 May 2026")
+      ),
+      // Tab row
+      React.createElement('div',{style:{display:"flex",overflowX:"auto",padding:"0 24px",gap:4,scrollbarWidth:"none"}},
+        tabs.map(tab=>React.createElement('button',{key:tab.id,onClick:()=>setActiveTab(tab.id),style:{
+          padding:"12px 16px",border:"none",background:"none",
+          fontSize:14,fontWeight:activeTab===tab.id?700:500,
+          color:activeTab===tab.id?"#f8fafc":"#64748b",
+          cursor:"pointer",fontFamily:"'DM Sans',sans-serif",whiteSpace:"nowrap",
+          borderBottom:activeTab===tab.id?"3px solid #3b82f6":"3px solid transparent",
+          transition:"all 0.15s",
+        }},tab.label))
+      )
+    ),
+
+    // ── CONTENT ──
+    React.createElement('div',{style:{padding:"32px 24px 60px"}},
+      activeTab==="today" && React.createElement(TodayTab,{tags,bookmarks,onBookmark:toggleBookmark,competitor:todayCompetitor,setCompetitor:setTodayCompetitor,setActiveTab}),
+      activeTab==="trends" && React.createElement(TrendsTab,{competitor:trendsCompetitor,setCompetitor:setTrendsCompetitor}),
+      activeTab==="benchmarks" && React.createElement(BenchmarksTab,null),
+      activeTab==="saved" && React.createElement(SavedTab,{bookmarks,tags}),
+      activeTab==="settings" && React.createElement(SettingsTab,{tags,setTags})
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
